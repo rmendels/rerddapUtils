@@ -1,0 +1,130 @@
+---
+title: "Using rerddapUtils"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using rerddapUtils}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(duckdb)
+library(duckplyr)
+library(lubridate)
+library(ncdf4)
+library(rerddap)
+library(rerddapUtils)
+```
+ 
+ `rerddapUtils` is an [R]{style="color:red"} package is a set of four functions desigened to work with and extend the `rerddap` package to provide capabilities requested by users that meet specialized needs which are better not being included in the `rerddao` package.
+ 
+ The first function is:
+ 
+- `griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = NULL, fmt = "nc", url = eurl(), store = disk(), read = TRUE, callopts = list())`
+                          
+which will only extract data for the period during the year defined by 'season'.  The second function is:
+  
+  
+- `griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_split = NULL, fmt = "nc", url = eurl(), store = disk(), read = TRUE, callopts = list(), aggregate_file = NULL)`
+              
+which is designed to split a very large request into pieces defined by 'request_split' and then aggregate the parts either in memory,  in a duckdb database or in a netcdf4 file.  This allows for requests larger than 2GB to be made in an appropriate manner.
+ 
+Note that `griddap_season()` and `griddap_split()` are designed to have basically the same interface as `rerddao::griddap()`,  except for one or two  extra function arguments and some arguments that are interpted differently. In both functions the argument 'store = disk()' is ignored.  In `griddap_season` the 'fmt' argument is ignored  while 'season' defines the days during the year to make the extract.
+
+In  `griddap_split` the argument 'fmt' defines whether the aggregate download should be stored in memory as a dataframe,  in a duckdb database file,  or in a netcdf file.  For the duckdb and nectdf options, 'aggregate_file' lets you define where to write the file,  if not defined it will set up a temporary file following proper [R]{style="color:red"} guidelines and in both cases the path to the file will be returned.
+
+The other two functions are designed to make it easier to work with projected datasets:
+
+- `latlon_to_xy <- function (dataInfo, latitude, longitude, yName = 'latitude', xName = 'longitude', crs = NULL) `
+
+which for a given dataset will convert a latitude and longitude request into the projected coordiantes to be used in `rerddao::griddap()`, while the fourth function:
+
+- `xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL)`
+
+does the reverse,  given an `rerddao::griddap()` extract will convert the projected coordinates into latitiude and longitude values.
+
+This vignette assumes familiarity with the various 'rerddap' functions and how to use them.  More information about the various 'rerddap' functions cna be found in the documentation for that package.
+
+## Extract during a season - `griddap_season()`
+
+The function `griddap_season()` works exactly like the function `rerddap::griddap` except that there is one extra argument,  "season",  which restricts the extract to the part of the year defined by season, and also ignores several of the `rerddap::griddap` options,  as it will ignore what format to downaod the data,  and will only save to a standard `rerddap::griddap` output structure.
+
+The argument "season" is a character string such that for a given "year",  paste0(year, '-', season) produces a valid ISO datetime string.  To test "season" is properly formed, use `lubridate::as_datetime()`:
+
+```{r}
+year <- '2023'
+season <- c('02-01', '06-01')
+# test that "season" is defined properly
+test_time <- paste0(year, '-', season)
+lubridate::as_datetime(test_time)
+```
+
+Even though the example only includes month and day,  hours etc can be included as long as the final result,  when a year is appended,  produces a valid datetime.
+
+As an example call and result, suppose you have a working `rerddap::griddap()` extract given by:
+
+```{r}
+wind_info <- rerddap::info('erdQMekm14day')
+extract <- rerddap::griddap(wind_info,
+                            time = c('2015-01-01','2019-01-01'),
+                            latitude = c(20, 40),
+                            longitude = c(220, 240),
+                            fields = 'mod_current'
+)
+```
+
+but it is desired to restrict extract to March 1 to May 1 inclusive,  then the following modification of the above using `griddap_season()`produces the desired result:
+
+
+```{r}
+wind_info <- rerddap::info('erdQMekm14day')
+season <- c('03-01', '05-01')
+season_extract <- griddap_season(wind_info,
+ time = c('2015-01-01','2019-01-01'),
+ latitude = c(20, 40),
+ longitude = c(220, 240),
+ fields = 'mod_current',
+ season = season
+)
+
+```
+
+To see that the extract has been limited to the given season:
+
+```{r}
+extract_times  <- lubridate::as_datetime(season_extract$data$time)
+extract_months <- lubridate::month(extract_times)
+unique(extract_months)
+```
+
+Only results for months 3, 4, and 5 are included,  as per "season".  May is included  because the season definition is inclusive,  hence May 1 will be included.
+
+```{r}
+#library(duckdb)
+#library(duckplyr)
+
+# Establish a connection to the DuckDB file
+con <- duckdb::duckdb("test.duckdb")
+
+# Assuming the DataFrame is stored in a table named 'extract'
+# Use duckplyr to work with the table using dplyr syntax
+extract_tbl <- duckplyr::tbl(con, "extract")
+
+# You can then perform operations on the table. For example, to read and print the entire DataFrame:
+extract_df <- duckplyr::collect(extract_tbl)
+
+# Print the DataFrame
+print(extract_df)
+
+# Don't forget to disconnect when you're done
+duckdb::dbDisconnect(con)
+
+```
+

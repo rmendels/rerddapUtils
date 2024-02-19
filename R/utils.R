@@ -1,3 +1,27 @@
+# Retrieve Dimension Values for a Dataset from an ERDDAP Server
+#
+# This function queries an ERDDAP server for the dimension values of a specified dataset.
+# It constructs a request to the server without fetching the actual data (fields set to 'none' and read set to FALSE),
+# aiming to retrieve metadata about the dataset dimensions. It is useful for understanding the range of
+# values each dimension covers, such as time, depth, latitude, and longitude.
+#
+# @param x An object returned by `rerddap::info()` that contains metadata about the dataset,
+#   including the base URL of the ERDDAP server and the dataset identifier.
+# @param dimargs A list specifying the dimensions and their ranges for which to retrieve values.
+#   Each element of the list should be named according to the dimension it represents.
+#
+# @return A list containing two elements: `dimVals`, a list of the retrieved dimension values,
+#   where each element is named after a dimension and contains the values for that dimension;
+#   and `nc_file`, a string indicating the filename of the NetCDF file that would contain the
+#   data (if it were to be downloaded).
+#
+# @examples
+# # Assuming `x` is a valid object returned by `rerddap::info()` for a dataset:
+# dimargs <- list(time = c('2020-01-01', '2020-12-31'), depth = c(0, 100))
+# dimVals <- get_dimVals(x, dimargs)
+# print(dimVals$dimVals)
+# print(dimVals$nc_file)
+#
 get_dimVals <- function(x, dimargs) {
   base_url <- paste0(x$base_url, '/')
   call_args <- list(datasetx = x)
@@ -20,6 +44,41 @@ get_dimVals <- function(x, dimargs) {
   return(list(dimVals = dimVals, nc_file = temp_result$summary$filename))
 }
 
+# Prepare a Call to `rerddap::griddap()` for Data Retrieval
+#
+# This function constructs the necessary arguments for a `rerddap::griddap()` call to retrieve
+# data from an ERDDAP server based on specified dimensions, stride, and fields. It checks and
+# adjusts dimension arguments, validates data ranges for latitude and longitude, and builds
+# a URL for the data request. This preparation includes parsing dimension arguments, handling
+# field selections, and determining the correct endpoint URL.
+#
+# @param x An object returned by `rerddap::info()` that contains metadata about the dataset,
+#   including the base URL of the ERDDAP server and the dataset identifier.
+# @param dimargs A named list specifying the dimensions and their ranges for the data retrieval.
+#   Each element of the list should be named according to the dimension it represents, and
+#   contain the range of values to request for that dimension.
+# @param stride An integer or named list specifying the stride (step size) for each dimension,
+#   used to thin the data retrieval. For a single integer, the same stride is applied to all
+#   dimensions.
+# @param fields A character vector specifying which fields (variables) to retrieve from the
+#   dataset. Can be a single variable name or 'all' for all available fields.
+# @param url The base URL of the ERDDAP server from which to fetch the data.
+#
+# @return A list containing detailed information necessary for making a `rerddap::griddap()`
+#   call, including adjusted dimension arguments, parsed dimension ranges, selected fields,
+#   the base URL for the dataset, and the path to the NetCDF file that will contain the
+#   downloaded data.
+#
+# @examples
+# # Assuming `x` is an info object for a specific dataset on an ERDDAP server:
+# dimargs <- list(time = c('2020-01-01', '2020-12-31'), latitude = c(-90, 90), longitude = c(-180, 180))
+# stride <- 1
+# fields <- 'all'
+# url <- "https://example.erddap.server/erddap/"
+#
+# call_info <- extract_rerddap_call(x, dimargs, stride, fields, url)
+# # call_info can now be used with `do.call(rerddap::griddap, call_info)` or similar logic.
+#
 extract_rerddap_call <- function(x, dimargs, stride, fields, url) {
   check_lat_text(dimargs)
   check_lon_text(dimargs)
@@ -57,6 +116,37 @@ extract_rerddap_call <- function(x, dimargs, stride, fields, url) {
 
 
 
+# Determine Split Indices for NetCDF File Dimensions
+#
+# This function calculates indices for splitting a NetCDF file into smaller segments along its
+# dimensions (time, altitude, latitude, longitude). It's useful for segmenting large NetCDF files
+# into more manageable pieces for analysis or for parallel processing tasks. The function
+# determines the number of segments and the indices at which to split each dimension based on
+# the provided split criteria.
+#
+# @param source_nc A list or object containing details about the NetCDF file's dimensions,
+#   including the length (number of elements) of each dimension (time, altitude, latitude,
+#   longitude).
+# @param split A named list specifying the desired number of splits for each dimension.
+#   The names of the list should correspond to the dimensions of the NetCDF file (e.g., time,
+#   altitude, latitude, longitude).
+#
+# @return A list with two elements: `no_extract`, a data frame indicating the number of extracts
+#   (segments) to be made for each dimension; and `dim_indices`, a data frame containing the
+#   indices for each dimension at which the splits should occur. These indices can be used to
+#   segment the NetCDF file into smaller pieces.
+#
+# @examples
+# source_nc <- list(dim = list(time = list(len = 365),
+#                             altitude = list(len = 10),
+#                             latitude = list(len = 180),
+#                             longitude = list(len = 360)))
+# split_criteria <- list(time = 4, altitude = 1, latitude = 2, longitude = 2)
+#
+# split_info <- define_split_nc(source_nc, split_criteria)
+# print(split_info$no_extract)
+# print(split_info$dim_indices)
+#
 define_split_nc <- function(source_nc, split){
   no_time <- source_nc$dim[['time']]$len
   no_altitude <- source_nc$dim[['altitude']]$len
@@ -88,7 +178,41 @@ define_split_nc <- function(source_nc, split){
 
 
 
-create_nc_file <- function(data_info, fields, source_file, destination_file) {
+# Create a New NetCDF File with Specified Fields from a Source File
+#
+# This function creates a new NetCDF file, copying dimensions from a source NetCDF file and
+# including only the specified fields. It's useful for extracting a subset of variables from a
+# large NetCDF file and saving them into a new file. The function handles the definition of
+# dimensions and variables based on the source file and the provided field list, including units
+# and data type precision for each field.
+#
+# @param data_info A data structure containing metadata about the variables to be included in the
+#   new NetCDF file. This should include data types and units for each variable specified in `fields`.
+# @param fields A vector of strings specifying the names of the variables to include in the new
+#   NetCDF file. These should correspond to variable names in the source NetCDF file and the
+#   `data_info` metadata.
+# @param source_file A string specifying the path to the source NetCDF file from which dimensions
+#   and variable metadata will be copied.
+# @param destination_file A string specifying the path where the new NetCDF file will be created.
+#
+# @return This function does not return a value but creates a new NetCDF file at `destination_file`
+#   containing the variables specified in `fields` with dimensions and metadata copied from
+#   `source_file`.
+#
+# @examples
+# data_info <- list(
+#   alldata = list(
+#     temperature = list(data_type = "double", attribute_name = c("units"), value = c("Celsius"))
+#   )
+# )
+# fields <- c("temperature")
+# source_file <- "path/to/source_file.nc"
+# destination_file <- "path/to/destination_file.nc"
+#
+# create_nc_file(data_info, fields, source_file, destination_file)
+# # This will create 'destination_file.nc' containing only the 'temperature' variable.
+#
+ screate_nc_file <- function(data_info, fields, source_file, destination_file) {
   # Open the source netCDF file
   source_nc <- ncdf4::nc_open(source_file)
   # Copy dimensions
@@ -121,10 +245,46 @@ create_nc_file <- function(data_info, fields, source_file, destination_file) {
   # Close the netCDF files
   ncdf4::nc_close(source_nc)
   ncdf4::nc_close(dest_nc)
-}
+ }
+
 # ----------------------------------------
 # Function to copy attributes
-copy_attributes <- function(data_info, fields, source_file, destination_file ) {
+ # Copy Attributes from Source to Destination NetCDF File
+ #
+ # This function copies global attributes and specified variable attributes from a source NetCDF
+ # file to a destination NetCDF file. It is useful for replicating metadata when creating a new
+ # NetCDF file based on an existing file, ensuring that the new file retains relevant contextual
+ # information and variable-specific attributes.
+ #
+ # @param data_info A data structure containing metadata and attribute values for the variables
+ #   specified in `fields`. This metadata is used to copy variable-specific attributes to the
+ #   destination file.
+ # @param fields A vector of strings specifying the names of the variables for which attributes
+ #   should be copied from the source to the destination file. These should correspond to variable
+ #   names in both the source file and the `data_info` metadata structure.
+ # @param source_file A string specifying the path to the source NetCDF file from which attributes
+ #   will be copied.
+ # @param destination_file A string specifying the path to the destination NetCDF file where the
+ #   attributes will be copied to.
+ #
+ # @return This function does not return a value but modifies the destination NetCDF file by
+ #   copying attributes for global scope and for the specified variables from the source file.
+ #
+ # @examples
+ # data_info <- list(
+ #   alldata = list(
+ #     temperature = list(values = list(units = "Celsius", long_name = "Sea Surface Temperature")),
+ #     salinity = list(values = list(units = "PSU", long_name = "Sea Surface Salinity"))
+ #   )
+ # )
+ # fields <- c("temperature", "salinity")
+ # source_file <- "path/to/source_file.nc"
+ # destination_file <- "path/to/destination_file.nc"
+ #
+ # copy_attributes(data_info, fields, source_file, destination_file)
+ # # This will copy global attributes and attributes for 'temperature' and 'salinity' variables.
+ #
+ copy_attributes <- function(data_info, fields, source_file, destination_file ) {
   # Open the source and destination netCDF files
   source_nc <- ncdf4::nc_open(source_file)
   dest_nc <- ncdf4::nc_open(destination_file, write = TRUE)

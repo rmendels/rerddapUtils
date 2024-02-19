@@ -40,7 +40,7 @@ griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = N
   x <- datasetx
   if (is.null(season)) {
     print('no season is given')
-    print('this must be a vector lenght 2')
+    print('this must be a vector length 2')
     print('each element of is of form month-day')
     stop('stopped on error')
   }
