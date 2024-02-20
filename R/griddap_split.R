@@ -84,16 +84,20 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
     return <- copy_attributes(x, fields, nc_file, aggregate_file)
   }
   extract <- split_griddap_request1(x, url, stride, griddapOpts,
-                                    request_split, split_dim, fields, fmt, aggregate_file)
+                                    request_split, split_dim, fields, fmt,
+                                    callopts, aggregate_file)
   return(extract)
 }
 
 
 split_griddap_request <- function(info, url, stride, griddapOpts,
-                                  request_split, split_dim, fields,  fmt, aggregate_file) {
+                                  request_split, split_dim, fields,  fmt,
+                                  callopts, aggregate_file) {
   # if fmt is duckdb,  open the connection
   if (fmt == 'duckdb') {
-    aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = 'duckdb')
+    if (is.null(aggregate_file)) {
+      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = 'duckdb')
+     }
     drv <- duckdb::duckdb()
     con_db <- duckdb::dbConnect(drv, aggregate_file)
   }
@@ -167,12 +171,16 @@ split_griddap_request <- function(info, url, stride, griddapOpts,
 # print(result)
 #
 split_griddap_request1 <- function(info, url, stride, griddapOpts,
-                                  request_split, split_dim, fields,  fmt, aggregate_file) {
+                                  request_split, split_dim, fields,  fmt,
+                                  callopts, aggregate_file) {
   # if fmt is duckdb,  open the connection
   con_db <- NULL
   if (fmt == 'duckdb') {
+    if (is.null(aggregate_file)) {
+      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = 'duckdb')
+    }
     drv <- duckdb::duckdb()
-    con_db <- duckdb::dbConnect(drv, "test.duckdb")
+    con_db <- duckdb::dbConnect(drv, aggregate_file)
   }
   griddapOptsNames <- c('datasetx',  names(split_dim), 'fields', "stride", "callopts")
   split_names <- names(split_dim)
@@ -297,7 +305,7 @@ partial_extract <- function(extract, fields, fmt,  griddapOpts, stride, callopts
   griddapOpts$fields <- fields
   griddapOpts$stride <- stride
   griddapOpts$callopts <- callopts
-  extract <- do.call(rerddap::griddap, griddapOpts)
+  extract <- suppressMessages(do.call(rerddap::griddap, griddapOpts))
   if (fmt == 'memory') {
     final_result <- aggregate_memory(extract, final_result)
   } else if (fmt == 'duckdb') {
@@ -477,7 +485,7 @@ aggregate_duckdb <- function(extract, con_db){
 }
 
 
-aggregate_duckdb1 <- function(extract, con_db){
+aggregate_duckdb_old <- function(extract, con_db){
   query <- "SELECT table_name FROM information_schema.tables WHERE table_name = 'extract';"
   result <- DBI::dbGetQuery(con_db, query)
   table_exists <- nrow(result) > 0

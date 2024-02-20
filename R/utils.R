@@ -212,7 +212,7 @@ define_split_nc <- function(source_nc, split){
 # create_nc_file(data_info, fields, source_file, destination_file)
 # # This will create 'destination_file.nc' containing only the 'temperature' variable.
 #
- screate_nc_file <- function(data_info, fields, source_file, destination_file) {
+ create_nc_file <- function(data_info, fields, source_file, destination_file) {
   # Open the source netCDF file
   source_nc <- ncdf4::nc_open(source_file)
   # Copy dimensions
