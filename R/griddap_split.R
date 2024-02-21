@@ -2,16 +2,18 @@
 #'
 #' \code{griddap_season} uses the R program 'rerddap::griddap()' to extract environmental data
 #' from an 'ERDDAP' server in an (time, z, y ,x) bounding box where time is restricted to a
-#' given season of the year  (see below).  Arguments are the same in 'rerddap::griddap()'
+#' given season of the year  (see below).  Arguments are the same as in 'rerddap::griddap()'
 #' except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 #' @param datasetx Anything coercable to an object of class info. So the output of a
 #' call to \code{\link{info}}, or a datasetid, which will internally be passed
-#' through \code{\link{info}
+#' through \code{\link{info}}
 #' @param ... Dimension arguments. See examples. Can be any 1 or more of the
 #' dimensions for the particular dataset - and the dimensions vary by dataset.
 #' For each dimension, pass in a vector of length two, with min and max value
 #' desired. at least 1 required.
 #' @param fields (character) Fields to return, in a character vector.
+#' @param stride (integer) How many values to get. 1 = get every value, 2 = get every other value, etc.
+#'                Default: 1 (i.e., get every value)
 #' @param request_split A numeric vector indicating the number of splits for each dimension, used
 #'   to segment the request into manageable chunks. This is particularly useful for large datasets.
 #' @param fmt (character) One of:
@@ -19,16 +21,10 @@
 #' -  memory:  save output in a dataframe in memory
 #' -  duckdb:  save data in a duckdb database
 #' @param url A URL for an ERDDAP server. Default:
-#' https://upwell.pfeg.noaa.gov/erddap/ - See [eurl()] for
+#' https://upwell.pfeg.noaa.gov/erddap/ - See [rerddap::eurl()] for
 #' more information
-#' @param store One of \code{\link{disk}} (default) or \code{\link{memory}}. You
-#' can pass options to \code{\link{disk}}. Beware: if you choose \code{fmt="nc"},
-#' we force \code{store=disk()} because nc files have to be written to disk.
-#' @param read (logical) Read data into memory or not. Does not apply when
-#' \code{store} parameter is set to memory (which reads data into memory).
-#' For large csv, or especially netcdf files, you may want to set this to
-#' \code{FALSE}, which simply returns a summary of the dataset - and you can
-#' read in data piecemeal later. Default: \code{TRUE}
+#' @param store ignored
+#' @param read ignored
 #' @param callopts Curl options passed on to \code{\link[crul]{verb-GET}}
 #' @param aggregate_file A string specifying:
 #'  - if is.null(aggregate_file) then a temporary file is created that does not
@@ -43,18 +39,35 @@
 #' @export
 #'
 #' @examples
+#' out <- rerddap::info('erdQMekm14day')
+#' request_split <- list(time = 3, altitude = 1, latitude = 1, longitude = 1)
+#' res <- griddap_split(out,
+#'                      time = c('2015-12-28','2016-01-01'),
+#'                      latitude = c(20, 40),
+#'                      longitude = c(220, 240),
+#'                      fields = 'mod_current',
+#'                      request_split = request_split
+#'                      )
 griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_split = NULL, fmt = "nc",
-                    url = eurl(), store = disk(), read = TRUE, callopts = list(), aggregate_file = NULL) {
+                    url = rerddap::eurl(), store = rerddap::disk(),
+                    read = TRUE, callopts = list(), aggregate_file = NULL) {
 
-  if(is.null(aggregate_file) & (fmt =='nc')) {
-    aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = 'nc')
-  }
   x <- datasetx
   if (is.null(request_split)) {
     print('no split is given')
     print('this must be a vector the same length of the number of dimensions')
     print('each elementof the vector is the number of splits in that dimension')
     stop('stopped on error')
+  }
+  if ( (fmt == 'nc') | (fmt == 'duckdb')) {
+    if (!is.null(aggregate_file )) {
+      file_check <- file.exists(aggregate_file)
+      if (file_check) {
+        print('aggregate file already exists')
+        print('either rename the exising file or change aggregate_file')
+        stop('program is stopping')
+      }
+    }
   }
   dimargs <- list(...)
   if (length(dimargs) == 0) stop("no dimension arguments passed, see ?griddap")
@@ -78,63 +91,13 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
   fields <- call_list$fields
   nc_file <- call_list$nc_file
   split_dim <- define_split(dimVals, request_split)
-  # if fmt is netcdf,  create new netcdf file and copy attributes
-  if (fmt == 'nc') {
-    return <- create_nc_file(x, fields, nc_file, aggregate_file )
-    return <- copy_attributes(x, fields, nc_file, aggregate_file)
-  }
-  extract <- split_griddap_request1(x, url, stride, griddapOpts,
+  extract <- split_griddap_request(x, url, stride,
                                     request_split, split_dim, fields, fmt,
-                                    callopts, aggregate_file)
+                                    callopts, nc_file, aggregate_file)
   return(extract)
 }
 
 
-split_griddap_request <- function(info, url, stride, griddapOpts,
-                                  request_split, split_dim, fields,  fmt,
-                                  callopts, aggregate_file) {
-  # if fmt is duckdb,  open the connection
-  if (fmt == 'duckdb') {
-    if (is.null(aggregate_file)) {
-      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = 'duckdb')
-     }
-    drv <- duckdb::duckdb()
-    con_db <- duckdb::dbConnect(drv, aggregate_file)
-  }
-  griddapOptsNames <- c('datasetx',  names(split_dim), 'fields')
-  split_names <- names(split_dim)
-  final_result <- NULL
-  for (i in seq(1, request_split[[1]])) {
-    temp_name <- split_names[1]
-    temp_value <- get_dim_constraint(request_split, split_dim, 1,  i)
-    griddapOpts <- list(info)
-    griddapOpts[[temp_name]] <- temp_value
-    for (j in seq(1, request_split[[2]])) {
-      temp_name <- split_names[2]
-      temp_value <- get_dim_constraint(request_split, split_dim, 2,  j)
-      griddapOpts[[temp_name]] <- temp_value
-      for (k in seq(1, request_split[[3]])) {
-        temp_name <- split_names[3]
-        temp_value <- get_dim_constraint(request_split, split_dim, 3,  k)
-        griddapOpts[[temp_name]] <- temp_value
-        for (l in seq(1, request_split[[4]])) {
-          temp_name <- split_names[4]
-          temp_value <- get_dim_constraint(request_split, split_dim, 4,  l)
-          griddapOpts[[temp_name]] <- temp_value
-          final_result <- partial_extract(extract, fields, fmt,  griddapOpts,
-                                          final_result, con_db, aggregate_file)
-       }
-      }
-    }
-  }
-  if (fmt == 'duckdb') {
-    duckdb::dbDisconnect(con_db, shutdown = TRUE)
-    final_result <- aggregate_file
-  } else if (fmt == 'nc') {
-    final_result <- aggregate_file
-  }
-  return(final_result)
-}
 
 # Split and Process 'rerddap::griddap()' Requests
 #
@@ -164,23 +127,25 @@ split_griddap_request <- function(info, url, stride, griddapOpts,
 # @return Depending on the `fmt`, either the path to the aggregated NetCDF file or the DuckDB
 #   database file containing the data retrieved and processed from the split requests.
 #
-# @examples
-# # Assuming `info` is a valid dataset information object and the necessary parameters are defined:
-# result <- split_griddap_request1(info, "https://example.com/erddap/", 1, list(),
-#                                 c(2, 2), list(lat = 2, lon = 2), 'all', 'nc', "output.nc")
-# print(result)
-#
-split_griddap_request1 <- function(info, url, stride, griddapOpts,
+split_griddap_request <- function(info, url, stride,
                                   request_split, split_dim, fields,  fmt,
-                                  callopts, aggregate_file) {
+                                  callopts, nc_file, aggregate_file) {
   # if fmt is duckdb,  open the connection
   con_db <- NULL
   if (fmt == 'duckdb') {
     if (is.null(aggregate_file)) {
-      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = 'duckdb')
+      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = '.duckdb')
     }
     drv <- duckdb::duckdb()
     con_db <- duckdb::dbConnect(drv, aggregate_file)
+  }
+  # if fmt is netcdf,  create new netcdf file and copy attributes
+  if (fmt == 'nc') {
+    if (is.null(aggregate_file)) {
+      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = '.nc')
+    }
+    return <- create_nc_file(info, fields, nc_file, aggregate_file )
+    return <- copy_attributes(info, fields, nc_file, aggregate_file)
   }
   griddapOptsNames <- c('datasetx',  names(split_dim), 'fields', "stride", "callopts")
   split_names <- names(split_dim)
@@ -191,6 +156,7 @@ split_griddap_request1 <- function(info, url, stride, griddapOpts,
                                     info, fields, fmt, con_db, aggregate_file)
   if (fmt == 'duckdb') {
     duckdb::dbDisconnect(con_db, shutdown = TRUE)
+    duckdb::duckdb_shutdown(drv)
     final_result <- aggregate_file
   } else if (fmt == 'nc') {
     final_result <- aggregate_file
@@ -233,13 +199,6 @@ split_griddap_request1 <- function(info, url, stride, griddapOpts,
 # @return The final aggregated result of the data extraction process, the specifics of which
 #   depend on the `fmt` parameter and the nature of the `final_result` accumulation.
 #
-# @examples
-# # This is a hypothetical example since the actual call depends on specific dataset information,
-# # dimensions, and server configurations:
-# result <- recursive_extract(1, c(2, 2), list(lat = 2, lon = 2), list(),
-#                             1, list(), NULL, dataset_info, 'all', 'nc', NULL, "output.nc")
-# print(result)
-#
 recursive_extract <- function(level, request_split, split_dim, griddapOpts,
                               stride, callopts, final_result,
                               info, fields, fmt, con_db, aggregate_file) {
@@ -247,7 +206,7 @@ recursive_extract <- function(level, request_split, split_dim, griddapOpts,
 
   # Base case: If the level exceeds the length of request_split, perform the extraction
   if (level > length(request_split)) {
-    final_result <- partial_extract(extract, fields, fmt, griddapOpts,  stride, callopts,
+    final_result <- partial_extract(fields, fmt, griddapOpts,  stride, callopts,
                                     final_result, con_db, aggregate_file)
     return(final_result)
   }
@@ -291,15 +250,7 @@ recursive_extract <- function(level, request_split, split_dim, griddapOpts,
 #   object or an indication of success; for 'nc', it may return the path to the NetCDF file or an
 #   indication of success.
 #
-# @examples
-# # Example usage (hypothetical, depends on setup and dataset):
-# griddapOpts <- list(datasetid = 'exampleDataset', time = c('2020-01-01', '2020-01-31'),
-#                     latitude = c(30, 45), longitude = c(-125, -115), altitude = c(0, 100))
-# result <- partial_extract(NULL, 'temperature', 'memory', griddapOpts, 1, list(),
-#                           NULL, NULL, "data.nc")
-# print(result)
-#
-partial_extract <- function(extract, fields, fmt,  griddapOpts, stride, callopts,
+partial_extract <- function(fields, fmt,  griddapOpts, stride, callopts,
                             final_result, con_db, aggregate_file) {
   names(griddapOpts)[1] <- 'datasetx'
   griddapOpts$fields <- fields
@@ -339,16 +290,6 @@ partial_extract <- function(extract, fields, fmt,  griddapOpts, stride, callopts
 #   for the specified dimension segment. If the dimension is not split (`request_split[var_index] == 1`),
 #   it returns the full range for that dimension.
 #
-# @examples
-# # Example usage for a dataset with dimensions split into segments:
-# request_split <- c(2, 3) # Assuming two dimensions, split into 2 and 3 segments, respectively
-# split_dim <- list(time = list(c('2020-01-01', '2020-06-30'), c('2020-07-01', '2020-12-31')),
-#                   depth = list(c(0, 50), c(51, 100), c(101, 150)))
-# var_index <- 1 # For 'time'
-# loop_index <- 2 # Second segment of 'time'
-# constraint <- get_dim_constraint(request_split, split_dim, var_index, loop_index)
-# print(constraint)
-#
 get_dim_constraint <- function(request_split, split_dim, var_index,  loop_index){
   split_names <- names(split_dim)
   temp_name <- split_names[var_index]
@@ -380,18 +321,6 @@ get_dim_constraint <- function(request_split, split_dim, var_index,  loop_index)
 # @return A list of the same structure as `dimVals`, where each dimension's values are further
 #   organized into the specified number of segments. If a dimension is not to be split (`request_split`
 #   value of 1), its original range is preserved.
-#
-# @examples
-# dimVals <- list(
-#   time = seq(as.Date("2020-01-01"), as.Date("2020-12-31"), by="month"),
-#   depth = seq(0, 500, by=100)
-# )
-# request_split <- c(4, 2) # Split time into 4 segments and depth into 2 segments
-#
-# # Define the splits
-# splits <- define_split(dimVals, request_split)
-#
-# print(splits)
 #
 define_split <- function(dimVals, request_split) {
   indices <- request_split > 1
@@ -425,14 +354,6 @@ define_split <- function(dimVals, request_split) {
 #
 # @return Returns an updated version of `final_result` that includes the data from `extract`.
 #   If `final_result` was initially `NULL`, returns `extract`.
-#
-# @examples
-# # Assuming `extract1` and `extract2` are data frames with similar structures:
-# final_result <- NULL
-# final_result <- aggregate_memory(extract1, final_result)
-# final_result <- aggregate_memory(extract2, final_result)
-# print(final_result)
-#
 aggregate_memory <- function(extract, final_result){
   if (is.null(final_result)) {
     final_result <- extract
@@ -457,17 +378,6 @@ aggregate_memory <- function(extract, final_result){
 #@return This function does not return a value but performs an operation that inserts or
 #  appends data into a DuckDB database.
 #
-#@examples
-## Assuming `extract` is a data frame with the extracted data, and `con_db` is an
-## established DuckDB connection:
-## Connect to DuckDB database (example connection, replace with actual connection details)
-#con_db <- DBI::dbConnect(duckdb::duckdb(), dbname = "path/to/your/database.duckdb")
-#
-#aggregate_duckdb(extract, con_db)
-#
-## After aggregation, don't forget to disconnect
-#DBI::dbDisconnect(con_db)
-#
 aggregate_duckdb <- function(extract, con_db){
   # Corrected function body with appropriate variable names
   query <- "SELECT table_name FROM information_schema.tables WHERE table_name = 'extract';"
@@ -485,18 +395,6 @@ aggregate_duckdb <- function(extract, con_db){
 }
 
 
-aggregate_duckdb_old <- function(extract, con_db){
-  query <- "SELECT table_name FROM information_schema.tables WHERE table_name = 'extract';"
-  result <- DBI::dbGetQuery(con_db, query)
-  table_exists <- nrow(result) > 0
-
-  if (!table_exists) {
-    DBI::dbWriteTable(con_db, "extract", extract$data)
-  } else {
-    DBI::dbWriteTable(con_db, "extract1", extract$data, append = TRUE)
-    DBI::dbExecute(con_db, "INSERT INTO extract SELECT * FROM extract1")
-  }
-}
 
 # Aggregate Extracted Data into a NetCDF File
 #

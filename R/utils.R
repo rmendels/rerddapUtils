@@ -225,13 +225,10 @@ define_split_nc <- function(source_nc, split){
   }
   # add fields from field list
   source_var <- list()
-  #for (var_name in names(source_nc$var)) {
   for (var_name in fields) {
-      print(var_name)
       prec <- data_info$alldata[[var_name]]$data_type[1]
       units_loc <- which(data_info$alldata[[var_name]]$attribute_name == 'units')
       units <- data_info$alldata[[var_name]]$value[units_loc]
-      print(units)
       source_var[[var_name]]  <- ncdf4::ncvar_def(name = var_name,
                                          # units = source_nc$var[[var_name]]$units,
                                          units = units,

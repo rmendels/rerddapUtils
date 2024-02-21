@@ -6,27 +6,22 @@
 #' except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 #' @param datasetx Anything coercable to an object of class info. So the output of a
 #' call to \code{\link{info}}, or a datasetid, which will internally be passed
-#' through \code{\link{info}
+#' through \code{\link{info}}
 #' @param ... Dimension arguments. See examples. Can be any 1 or more of the
 #' dimensions for the particular dataset - and the dimensions vary by dataset.
 #' For each dimension, pass in a vector of length two, with min and max value
 #' desired. at least 1 required.
 #' @param fields (character) Fields to return, in a character vector.
-#' @param stride (integer) How many values to get. 1 = get every value, 2 = get
+#' @param stride (integer) How many values to get. 1 = get every value, 2 = get every other value, etc.
+#'                Default: 1 (i.e., get every value)
 #' @param season (character) a character array with the times of the trajectory in
 #'  the form  c("MM-DD", "MM-DD")
-#' @param fmt (character) One of csv or nc (for netcdf). Default: nc
+#' @param fmt (character) ignored
 #' @param url A URL for an ERDDAP server. Default:
-#' https://upwell.pfeg.noaa.gov/erddap/ - See [eurl()] for
+#' https://upwell.pfeg.noaa.gov/erddap/ - See [rerddap::eurl()] for
 #' more information
-#' @param store One of \code{\link{disk}} (default) or \code{\link{memory}}. You
-#' can pass options to \code{\link{disk}}. Beware: if you choose \code{fmt="nc"},
-#' we force \code{store=disk()} because nc files have to be written to disk.
-#' @param read (logical) Read data into memory or not. Does not apply when
-#' \code{store} parameter is set to memory (which reads data into memory).
-#' For large csv, or especially netcdf files, you may want to set this to
-#' \code{FALSE}, which simply returns a summary of the dataset - and you can
-#' read in data piecemeal later. Default: \code{TRUE}
+#' @param store ignored
+#' @param read ignored
 #' @param callopts Curl options passed on to \code{\link[crul]{verb-GET}}
 #'
 #' @return An object of class \code{griddap_csv} if csv chosen or
@@ -34,8 +29,19 @@
 #' @export
 #'
 #' @examples
+#' wind_info <- rerddap::info('erdQMekm14day')
+#' season <- c('03-01', '04-05')
+#' season_extract <- griddap_season(wind_info,
+#'                                  time = c('2015-01-28','2017-01-01'),
+#'                                  latitude = c(20, 40),
+#'                                  longitude = c(220, 240),
+#'                                  fields = 'mod_current',
+#'                                  season = season
+#'                                  )
+
 griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = NULL, fmt = "nc",
-                          url = eurl(), store = disk(), read = TRUE, callopts = list()) {
+                          url = rerddap::eurl(), store = rerddap::disk(),
+                          read = TRUE, callopts = list()) {
 
   x <- datasetx
   if (is.null(season)) {

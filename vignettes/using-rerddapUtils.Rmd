@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
+library(dplyr)
 library(duckdb)
 library(duckplyr)
 library(lubridate)
@@ -50,7 +51,7 @@ which for a given dataset will convert a latitude and longitude request into the
 
 does the reverse,  given an `rerddao::griddap()` extract will convert the projected coordinates into latitiude and longitude values.
 
-This vignette assumes familiarity with the various 'rerddap' functions and how to use them.  More information about the various 'rerddap' functions cna be found in the documentation for that package.
+This vignette assumes familiarity with the various 'rerddap' functions and how to use them.  More information about the various 'rerddap' functions can be found in the documentation for that package.
 
 ## Extract during a season - `griddap_season()`
 
@@ -58,7 +59,7 @@ The function `griddap_season()` works exactly like the function `rerddap::gridda
 
 The argument "season" is a character string such that for a given "year",  paste0(year, '-', season) produces a valid ISO datetime string.  To test "season" is properly formed, use `lubridate::as_datetime()`:
 
-```{r}
+```{r test_season_time}
 year <- '2023'
 season <- c('02-01', '06-01')
 # test that "season" is defined properly
@@ -70,7 +71,7 @@ Even though the example only includes month and day,  hours etc can be included 
 
 As an example call and result, suppose you have a working `rerddap::griddap()` extract given by:
 
-```{r, eval=FALSE}
+```{r wind_extract, eval=FALSE}
 wind_info <- rerddap::info('erdQMekm14day')
 extract <- rerddap::griddap(wind_info,
                             time = c('2015-01-01','2019-01-01'),
@@ -83,7 +84,7 @@ extract <- rerddap::griddap(wind_info,
 but it is desired to restrict extract to March 1 to May 1 inclusive,  then the following modification of the above using `griddap_season()`produces the desired result:
 
 
-```{r}
+```{r wind_season}
 wind_info <- rerddap::info('erdQMekm14day')
 season <- c('03-01', '05-01')
 season_extract <- griddap_season(wind_info,
@@ -98,7 +99,7 @@ season_extract <- griddap_season(wind_info,
 
 To see that the extract has been limited to the given season:
 
-```{r}
+```{r season_months}
 extract_times  <- lubridate::as_datetime(season_extract$data$time)
 extract_months <- lubridate::month(extract_times)
 unique(extract_months)
@@ -119,13 +120,13 @@ The function `griddap_split()` allows to make `rerddap::griddap()` requests that
 
 The argument "split" is a named list that defines the number of splits in each dimension,  not the values where to make the splits, and a value must be given for each coordinate in the dataset.  So for the dataset 'erdQMekm14day' above,  there are four coordinates,  "time", "altitude", "latitude" and "longitude", to break the request into five "time" parts and two "latitude" and "longitude" parts  (if you remember your combinatorics the original request will be broken into 20 separate requests) use:
 
-```{r}
+```{r request_split}
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
 ```
 
 Note that:
 
-```{r}
+```{r request_split_fail, eval = FALSE}
 request_split <- list(time = 5, latitude = 2, longitude = 2)
 ```
 
@@ -135,10 +136,10 @@ will fail,  even though "altitude" is dimension one.  A value must be given for 
 
 As in the previous example suppose I had an `rerddap::griddap()` extract:
 
-```{r, eval=FALSE}
+```{r wind_extract_redux, eval=FALSE}
 wind_info <- rerddap::info('erdQMekm14day')
 extract <- rerddap::griddap(wind_info,
-                            time = c('2015-01-01','2019-01-01'),
+                            time = c('2015-01-01','2016-01-01'),
                             latitude = c(20, 40),
                             longitude = c(220, 240),
                             fields = 'mod_current'
@@ -147,12 +148,12 @@ extract <- rerddap::griddap(wind_info,
 
 which would request an extract too large for ERDDAP to fulfill (that is not the case here so a split is not needed,  but this illustrates the usage).  Then the following modifies the code to split the request and save into a structure in memory:
 
-```{r}
+```{r winf_split_memory, eval = FALSE}
 
 wind_info <- rerddap::info('erdQMekm14day')
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
 split_extract <- griddap_split(wind_info,
- time = c('2015-01-01','2019-01-01'),
+ time = c('2015-01-01','2016-01-01'),
  latitude = c(20, 40),
  longitude = c(220, 240),
  fields = 'mod_current',
@@ -166,12 +167,12 @@ On return, "split_extract" will contain the usual `rerddap::griddap()` structure
 
 If instead it is desired to store the result in a netcdf4 file:
 
-```{r}
+```{r wind_split_nc, evsl = FALSE}
 
 wind_info <- rerddap::info('erdQMekm14day')
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
 split_extract <- griddap_split(wind_info,
- time = c('2015-01-01','2019-01-01'),
+ time = c('2015-01-01','2016-01-01'),
  latitude = c(20, 40),
  longitude = c(220, 240),
  fields = 'mod_current',
@@ -183,7 +184,7 @@ split_extract <- griddap_split(wind_info,
 
 Since "aggregate_file" is not given, the netcdf file will be written to a temporary space and the path to that file will be returned by the function.  The reason for this is it is bad form for an R package to write to a user's space without permission.  To give permission to wrtie to a file of one's choosing, either give the full path to the file (or if just the name is given it will be written to the present directory), such as for the example above:
 
-```{r, eval=FALSE}
+```{r wind_split_nc_named, eval=FALSE}
 
 wind_info <- rerddap::info('erdQMekm14day')
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
@@ -201,21 +202,22 @@ split_extract <- griddap_split(wind_info,
 
 To access the data in the file, any of the various R packages that can read netcdf4 files can be used, in particular ones that allow for only part of the dataset to be read into memory at a time.  For example to open the result of the netcdf file created above using 'ncdf4' and viewing a summary:
 
-```{r}
+```{r wind_split_read_nc, eval = FALSE}
 wind_file <- ncdf4::nc_open(split_extract )
-ncdf4::nc_close(wind_file)
 wind_file
+ncdf4::nc_close(wind_file)
+
 ```
 
 
 To make the same extract and save to a duckbb database file:
 
-```{r}
+```{r wind_split_duckdb, eval = FALSE}
 
 wind_info <- rerddap::info('erdQMekm14day')
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
 split_extract <- griddap_split(wind_info,
- time = c('2015-01-01','2019-01-01'),
+ time = c('2015-01-01','2016-01-01'),
  latitude = c(20, 40),
  longitude = c(220, 240),
  fields = 'mod_current',
@@ -227,11 +229,71 @@ split_extract <- griddap_split(wind_info,
 ```
 
 
-To read in the extract from the duckdb database table:
+There are many tools that can used to access the duckdb database file,  among others the packages 'dplyr' and 'duckplyr' can be used:
 
-```{r}
-#do something to read in split_extract
+```{r wind_split_read, eval = FALSE}
+con <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
+tbl(con, "extract") |>
+     head(5) |>
+     collect()
+dbDisconnect(con, shutdown=TRUE)
+```
+
+Note that the table will always be called "extract".
+
+
+## Working with projected datasets - `latlon_to_xy()` and `xy_to_latlon()`
+
+
+Extracting projected data in ERDDAP  (that is not on a latitude-longitude) grid can be difficult because most people do not think in terms of the projection in defining the region to make an extract,  and similary once an extract has been made,  it is often desirable to know the coordinates in terms of latitude and longitude.  The functions `latlon_to_xy()` and `xy_to_latlon()` are desigend to help with that process.
+
+In both cases the functions try to determine the dataset projection either from the dataset summary given by `rerddap::info()` when projecting the values of a latitude-longitude bounding box,  and when an extract has been made, from the metadata in the extract.  This is done by searching for any of the terms:
+
+```{r proj_strings, eval = FALSE}
+  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'grid_mapping_epsg_code',
+                    'grid_mapping_proj4', 'grid_mapping_proj4_params', 'grid_mapping_proj4text',
+                    'WKT')
+
+```
+
+in the metadata.  If this is not found,  then the user has to provide "CRS",  which can be in any of the forms above. For example the Ice dataset 'nsidcG02202v4sh1day' on the Polarwatch ERDDAP is projected. The bounding box of interest is:
+
+```{r bounding_box}
+latitude <- c(20, 30)
+longitude <- c(-140, -130)
+
+```
+
+then the bounding box in projected coordinates is found from:
+
+```{r latlon_to_xy, eval = FALSE}
+myURL <- 'https://polarwatch.noaa.gov/erddap/'
+myInfo <- rerddap::info('nsidcG02202v4sh1day', url = myURL)
+latitude <- c(20, 30)
+longitude <- c(-140, -130)
+coords <- latlon_to_xy(myInfo, latitude, longitude)
+coords
+
+```
+
+Similary,  given an extract on a projected coordinate system, the values on terms of latitude and longitude can be found by:
+
+```{r xy_to_latlon, eval = FALSE} 
+xgrid <- c(162500, 512500)
+ygrid <- c(-437500,-637500)
+xName <- 'xgrid'
+yName <- 'ygrid'
+proj_extract <- rerddap::griddap(myInfo, 
+                time = c('2023-06-30T00:00:00Z', '2023-06-30T00:00:00Z'),
+                ygrid = ygrid,
+                xgrid = xgrid,
+                fields = 'cdr_seaice_conc',
+                url = myURL
+                )
+test <- xy_to_latlon(proj_extract, yName = 'ygrid', xName = 'xgrid')
+head(test)
+
 ```
 
 
-
+Note that `xy_to_latlon()` will also work with the output from the functions `rerddapXtracto::rxtracto()`, `rerddapXtracto::rxtracto_3D() ` and ``rerddapXtracto::rxtractogon()`.

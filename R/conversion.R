@@ -23,11 +23,20 @@
 #' @export
 #'
 #' @examples
-#' # Assuming `response` is a valid response object from `rerddap::griddap()`
-#' # and that it contains projected coordinates with CRS information:
-#' coordinates <- xy_to_latlon(response, yName = 'latitude', xName = 'longitude')
-#' head(coordinates)
-#'
+#' xgrid <- c(162500, 512500)
+#' ygrid <- c(-437500,-637500)
+#' xName <- 'xgrid'
+#' yName <- 'ygrid'
+#' myURL <- 'https://polarwatch.noaa.gov/erddap/'
+#' myInfo <- rerddap::info('nsidcG02202v4sh1day', url = 'https://polarwatch.noaa.gov/erddap/')
+#' proj_extract <- rerddap::griddap(myInfo,
+#'                                  time = c('2023-06-30T00:00:00Z', '2023-06-30T00:00:00Z'),
+#'                                  ygrid = ygrid,
+#'                                  xgrid = xgrid,
+#'                                  fields = 'cdr_seaice_conc',
+#'                                  url = myURL
+#'  )
+#' test <- xy_to_latlon(proj_extract, yName = 'ygrid', xName = 'xgrid')
 xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   # resp is call to rerddap::griddap() check that it is the right type
   url <- attributes(resp)$url
@@ -35,7 +44,7 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   base_loc <- stringr::str_locate(url, 'erddap')
   base_loc <- base_loc[1, 2]
   base_url <- substr(url, 1, (base_loc + 1))
-  dataset_info <- rerddap::info(datasetid, url = base_url)
+  dataInfo <- rerddap::info(datasetid, url = base_url)
   proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'grid_mapping_epsg_code',
                     'grid_mapping_proj4', 'grid_mapping_proj4_params', 'grid_mapping_proj4text',
                     'WKT')
@@ -102,17 +111,15 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
 #' @export
 #'
 #' @examples
-#' # Assuming `dataInfo` contains valid CRS information:
-#' latitude <- c(34.0522, 36.7783)
-#' longitude <- c(-118.2437, -119.4179)
-#' coordinates <- latlon_to_xy(dataInfo, latitude, longitude)
-#' print(coordinates)
-#'
+#' myURL <- 'https://polarwatch.noaa.gov/erddap/'
+#' myInfo <- rerddap::info('nsidcG02202v4sh1day', url = myURL)
+#' latitude <- c(20, 30)
+#' longitude <- c(-140, -130)
+#' coords <- latlon_to_xy(myInfo, latitude, longitude)
 latlon_to_xy <- function (dataInfo, latitude, longitude, yName = 'latitude', xName = 'longitude', crs = NULL) {
   proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'grid_mapping_epsg_code',
                     'grid_mapping_proj4', 'grid_mapping_proj4_params', 'grid_mapping_proj4text',
                     'WKT')
-
   if (!is.null(crs)) {
     proj_crs_code = crs
   } else {
@@ -127,7 +134,6 @@ latlon_to_xy <- function (dataInfo, latitude, longitude, yName = 'latitude', xNa
     }
   }
   temp_df <- data.frame(Lat = latitude, Lon = longitude)
-  # transform PB_Argos_subset to sf object
   # EPSG:4326 is basic lat-lon coordinates
   temp_df <- sf::st_as_sf(temp_df, coords = c("Lon", "Lat"), crs = 'EPSG:4326')
   # project data
