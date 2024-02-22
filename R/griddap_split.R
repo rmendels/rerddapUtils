@@ -111,8 +111,6 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
 # @param url The base URL of the ERDDAP server from which to fetch the data.
 # @param stride An integer indicating the stride (step size) for the query, allowing for
 #   data thinning to reduce the volume of data retrieved.
-# @param griddapOpts A list of options to pass to the `rerddap::griddap()` call, potentially
-#   including additional parameters like authentication credentials.
 # @param request_split A numeric vector indicating how to split the dataset query along each
 #   dimension to manage large datasets more effectively.
 # @param split_dim A named list where each name corresponds to a dimension in the dataset and
@@ -231,7 +229,6 @@ recursive_extract <- function(level, request_split, split_dim, griddapOpts,
 # handling specific fields and formatting options. It supports aggregating the extracted data into
 # various formats such as in-memory objects, DuckDB, or NetCDF files, based on the specified format.
 #
-# @param extract A placeholder parameter for consistency in function signature; not used.
 # @param fields The fields (variables) to be extracted from the dataset.
 # @param fmt The format for aggregating the extracted data: 'memory', 'duckdb', or 'nc' (NetCDF).
 # @param griddapOpts A list of options for the `rerddap::griddap()` call, including dataset ID,
