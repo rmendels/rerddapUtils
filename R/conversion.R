@@ -45,8 +45,9 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   base_loc <- base_loc[1, 2]
   base_url <- substr(url, 1, (base_loc + 1))
   dataInfo <- rerddap::info(datasetid, url = base_url)
-  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'grid_mapping_epsg_code',
-                    'grid_mapping_proj4', 'grid_mapping_proj4_params', 'grid_mapping_proj4text',
+  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'projection',
+                    'grid_mapping_epsg_code','grid_mapping_proj4',
+                    'grid_mapping_proj4_params', 'grid_mapping_proj4text',
                     'WKT')
 
   if (!is.null(crs)) {
@@ -117,13 +118,14 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
 #' longitude <- c(-140, -130)
 #' coords <- latlon_to_xy(myInfo, latitude, longitude)
 latlon_to_xy <- function (dataInfo, latitude, longitude, yName = 'latitude', xName = 'longitude', crs = NULL) {
-  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'grid_mapping_epsg_code',
-                    'grid_mapping_proj4', 'grid_mapping_proj4_params', 'grid_mapping_proj4text',
+  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'projection',
+                    'grid_mapping_epsg_code','grid_mapping_proj4',
+                    'grid_mapping_proj4_params', 'grid_mapping_proj4text',
                     'WKT')
   if (!is.null(crs)) {
     proj_crs_code = crs
   } else {
-    crs_test <- intersect( proj_strings, dataInfo$alldata$NC_GLOBAL$attribute_name)
+    crs_test <- intersect( unlist(proj_strings), unlist(dataInfo$alldata$NC_GLOBAL$attribute_name))
     if (length(crs_test) == 0) {
       print('Could not find any of folowing fields for crs information')
       print( proj_strings)
