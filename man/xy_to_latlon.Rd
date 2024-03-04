@@ -17,8 +17,8 @@ coordinate data along with metadata including the dataset's CRS.}
 \item{xName}{The name of the variable in \code{resp} that represents the X coordinate
 (typically longitude or easting). Defaults to 'rows'.}
 
-\item{crs}{An optional CRS code to be used for the transformation. If not provided,
-the function attempts to automatically detect the CRS from the \code{resp} metadata. The
+\item{crs}{An optional CRS code to be used for the transformation.
+If a CRS is found in the  \code{resp} metadata this is ignored.
 CRS code should be a valid EPSG code (e.g., \code{4326} for WGS84) or a PROJ string.}
 }
 \value{

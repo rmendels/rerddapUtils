@@ -12,10 +12,9 @@
 #'   (typically latitude or northing). Defaults to 'cols'.
 #' @param xName The name of the variable in `resp` that represents the X coordinate
 #'   (typically longitude or easting). Defaults to 'rows'.
-#' @param crs An optional CRS code to be used for the transformation. If not provided,
-#'   the function attempts to automatically detect the CRS from the `resp` metadata. The
+#' @param crs An optional CRS code to be used for the transformation.
+#'   If a CRS is found in the  `resp` metadata this is ignored.
 #'   CRS code should be a valid EPSG code (e.g., `4326` for WGS84) or a PROJ string.
-#'
 #' @return A matrix with two columns (`longitude`, `latitude`) containing the geographic
 #'   coordinates corresponding to the projected coordinates in the input `resp`. Each row
 #'   in the matrix corresponds to a point in `resp`.
@@ -52,18 +51,19 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'projection',
                     'grid_mapping_epsg_code', 'grid_mapping_proj4',
                     'grid_mapping_proj4_params', 'grid_mapping_proj4text', 'WKT')
-
-  # Determine CRS
-  if (!is.null(crs)) {
-    proj_crs_code <- crs
-  } else {
-    crs_test <- intersect(proj_strings, dataInfo$alldata$NC_GLOBAL$attribute_name)
-    if (length(crs_test) == 0) {
-      stop("Could not find CRS information in the dataset. Please provide CRS information in the function call.")
+  # if crs is in extract use that
+  crs_test <- intersect(proj_strings, dataInfo$alldata$NC_GLOBAL$attribute_name)
+  if (length(crs_test) == 0) {
+    # check if a crs is given
+    if (!is.null(crs)) {
+      proj_crs_code <- crs
     } else {
-      proj_crs_code_index <- match(crs_test, dataInfo$alldata$NC_GLOBAL$attribute_name)
-      proj_crs_code <- dataInfo$alldata$NC_GLOBAL$value[proj_crs_code_index]
+      print('Could not find CRS information in the dataset and a CRS was not given')
+      stop('Please provide CRS information in the function call.')
     }
+  } else {
+    proj_crs_code_index <- match(crs_test, dataInfo$alldata$NC_GLOBAL$attribute_name)
+    proj_crs_code <- dataInfo$alldata$NC_GLOBAL$value[proj_crs_code_index]
   }
   temp_df <- extract_grid_data(resp, xName, yName)
 
