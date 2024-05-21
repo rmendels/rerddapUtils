@@ -33,18 +33,18 @@ into geographical coordinates (latitude and longitude). It supports responses fr
 the appropriate Coordinate Reference System (CRS) transformation.
 }
 \examples{
-xgrid <- c(162500, 512500)
-ygrid <- c(-437500,-637500)
+rows <- c( -889533.8, -469356.9)
+cols <- c(622858.3, 270983.4)
 xName <- 'xgrid'
 yName <- 'ygrid'
 myURL <- 'https://polarwatch.noaa.gov/erddap/'
-myInfo <- rerddap::info('nsidcG02202v4sh1day', url = 'https://polarwatch.noaa.gov/erddap/')
+myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 proj_extract <- rerddap::griddap(myInfo,
-                                 time = c('2023-06-30T00:00:00Z', '2023-06-30T00:00:00Z'),
-                                 ygrid = ygrid,
-                                 xgrid = xgrid,
-                                 fields = 'cdr_seaice_conc',
+                                 time = c('2023-01-30T00:00:00Z', '2023-01-30T00:00:00Z'),
+                                 rows = rows,
+                                 cols = cols,
+                                 fields = 'IceThickness',
                                  url = myURL
  )
-test <- xy_to_latlon(proj_extract, yName = 'ygrid', xName = 'xgrid')
+test <- xy_to_latlon(proj_extract)
 }

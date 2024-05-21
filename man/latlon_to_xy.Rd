@@ -6,10 +6,10 @@
 \usage{
 latlon_to_xy(
   dataInfo,
-  latitude,
   longitude,
-  yName = "latitude",
-  xName = "longitude",
+  latitude,
+  xName = "rows",
+  yName = "cols",
   crs = NULL
 )
 }
@@ -18,15 +18,15 @@ latlon_to_xy(
 from a \code{rerddap::info()} call on a dataset. It should include global attributes
 that contain CRS information.}
 
-\item{latitude}{Numeric vector of latitudes to be converted.}
-
 \item{longitude}{Numeric vector of longitudes to be converted.}
 
-\item{yName}{Name of the latitude coordinate in the output projection. Defaults
-to 'latitude'.}
+\item{latitude}{Numeric vector of latitudes to be converted.}
 
 \item{xName}{Name of the longitude coordinate in the output projection. Defaults
 to 'longitude'.}
+
+\item{yName}{Name of the latitude coordinate in the output projection. Defaults
+to 'latitude'.}
 
 \item{crs}{Optional. A character string specifying the CRS to use for the
 projection. This can be an EPSG code (e.g., 'EPSG:4326' for WGS84) or a PROJ
@@ -47,8 +47,8 @@ coordinate transformation.
 }
 \examples{
 myURL <- 'https://polarwatch.noaa.gov/erddap/'
-myInfo <- rerddap::info('nsidcG02202v4sh1day', url = myURL)
-latitude <- c(20, 30)
-longitude <- c(-140, -130)
-coords <- latlon_to_xy(myInfo, latitude, longitude)
+myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+latitude <- c( 80., 85.)
+longitude <- c(-170., -165)
+coords <- latlon_to_xy(myInfo,  longitude, latitude)
 }

@@ -22,20 +22,20 @@
 #' @export
 #'
 #' @examples
-#' xgrid <- c(162500, 512500)
-#' ygrid <- c(-437500,-637500)
+#' rows <- c( -889533.8, -469356.9)
+#' cols <- c(622858.3, 270983.4)
 #' xName <- 'xgrid'
 #' yName <- 'ygrid'
 #' myURL <- 'https://polarwatch.noaa.gov/erddap/'
-#' myInfo <- rerddap::info('nsidcG02202v4sh1day', url = 'https://polarwatch.noaa.gov/erddap/')
+#' myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 #' proj_extract <- rerddap::griddap(myInfo,
-#'                                  time = c('2023-06-30T00:00:00Z', '2023-06-30T00:00:00Z'),
-#'                                  ygrid = ygrid,
-#'                                  xgrid = xgrid,
-#'                                  fields = 'cdr_seaice_conc',
+#'                                  time = c('2023-01-30T00:00:00Z', '2023-01-30T00:00:00Z'),
+#'                                  rows = rows,
+#'                                  cols = cols,
+#'                                  fields = 'IceThickness',
 #'                                  url = myURL
 #'  )
-#' test <- xy_to_latlon(proj_extract, yName = 'ygrid', xName = 'xgrid')
+#' test <- xy_to_latlon(proj_extract)
 xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   # Validate resp is from rerddap and extract necessary attributes
   if (!inherits(resp, c('griddap_nc', 'rxtracto', 'rxtracto3D', 'rxtractoTrack'))) {
@@ -48,9 +48,10 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   base_url <- substr(url, 1, (base_loc + 1))
   dataInfo <- rerddap::info(datasetid, url = base_url)
 
-  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'projection',
+  proj_strings <- c('proj4text', 'projection', 'proj4string', 'grid_mapping_epsg_code',
+                    'WKT',  'proj_crs_code',
                     'grid_mapping_epsg_code', 'grid_mapping_proj4',
-                    'grid_mapping_proj4_params', 'grid_mapping_proj4text', 'WKT')
+                    'grid_mapping_proj4_params', 'grid_mapping_proj4text')
   # if crs is in extract use that
   crs_test <- intersect(proj_strings, dataInfo$alldata$NC_GLOBAL$attribute_name)
   if (length(crs_test) == 0) {
@@ -68,11 +69,8 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   temp_df <- extract_grid_data(resp, xName, yName)
 
   # Convert grid data to spatial data frame and transform to lat-lon
-  temp_df <- sf::st_as_sf(temp_df, coords = c('xgrid', 'ygrid'), crs = proj_crs_code[1])
-  temp_df <- sf::st_transform(temp_df, crs = 4326)
-  coordinates <- sf::st_coordinates(temp_df)
+  coordinates <- prepare_and_transform(temp_df, proj_crs_code[1],  'EPSG:4326')
   dimnames(coordinates)[[2]] <- c('longitude', 'latitude')
-
   coordinates
 }
 
@@ -106,15 +104,18 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
 #'
 #' @examples
 #' myURL <- 'https://polarwatch.noaa.gov/erddap/'
-#' myInfo <- rerddap::info('nsidcG02202v4sh1day', url = myURL)
-#' latitude <- c(20, 30)
-#' longitude <- c(-140, -130)
-#' coords <- latlon_to_xy(myInfo, latitude, longitude)
-latlon_to_xy <- function (dataInfo, latitude, longitude, yName = 'latitude', xName = 'longitude', crs = NULL) {
-  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'projection',
-                    'grid_mapping_epsg_code','grid_mapping_proj4',
-                    'grid_mapping_proj4_params', 'grid_mapping_proj4text',
-                    'WKT')
+#' myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+#' latitude <- c( 80., 85.)
+#' longitude <- c(-170., -165)
+#' coords <- latlon_to_xy(myInfo,  longitude, latitude)
+latlon_to_xy <- function (dataInfo, longitude, latitude,  xName = 'rows', yName = 'cols', crs = NULL) {
+  proj_strings <- c('proj4text', 'projection', 'proj4string', 'grid_mapping_epsg_code',
+                    'WKT',  'proj_crs_code',
+                    'grid_mapping_epsg_code', 'grid_mapping_proj4',
+                    'grid_mapping_proj4_params', 'grid_mapping_proj4text')
+
+  # put lat-lon values into dataframe
+  temp_df <- data.frame(longitude = longitude,  latitude = latitude)
   crs_given <- !is.null(crs)
   crs_test <- intersect(unlist(proj_strings), unlist(dataInfo$alldata$NC_GLOBAL$attribute_name))
   crs_in_file <- length(crs_test) > 0
@@ -135,20 +136,21 @@ latlon_to_xy <- function (dataInfo, latitude, longitude, yName = 'latitude', xNa
     stop("Missing CRS information")
   } else if (crs_in_file && !crs_given) {
     # CRS in file, no CRS given
-    coordinates <- prepare_and_transform(proj_crs_code[1])
+    coordinates <- prepare_and_transform(temp_df, 'EPSG:4326', proj_crs_code[1])
   } else if (crs_in_file && crs_given) {
     # CRS in file, CRS given
     crs_agree <- crs %in% proj_crs_code
     if (!crs_agree) {
       warning("The CRS given does not agree with the CRS in the file")
-      warning(paste("The given CRS is", crs, "- the file CRS is", proj_crs_code))
+      warning(paste("The given CRS is", crs, "- the file CRS is", proj_crs_code[1]))
+      warning('the file CRS will be used')
     }
-    coordinates <- prepare_and_transform(crs)
+    coordinates <- prepare_and_transform(temp_df, 'EPSG:4326', proj_crs_code[1])
   } else if (!crs_in_file && crs_given) {
     # No CRS in file, CRS given
-    coordinates <- prepare_and_transform(crs)
+    coordinates <- prepare_and_transform(temp_df, 'EPSG:4326', crs)
   }
-
+  dimnames(coordinates)[[2]] <- c(xName, yName)
   return(coordinates)
 }
 
@@ -161,10 +163,14 @@ extract_grid_data <- function(resp, xName, yName) {
   }
 }
 
-prepare_and_transform <- function(crs_code) {
-  temp_df <- data.frame(Lat = latitude, Lon = longitude)
-  temp_df <- sf::st_as_sf(temp_df, coords = c("Lon", "Lat"), crs = 'EPSG:4326')
-  temp_df <- sf::st_transform(temp_df, crs = crs_code)
-  return(sf::st_coordinates(temp_df))
-}
 
+prepare_and_transform <- function(data_coords, crs_code_old, crs_code_new) {
+  # Step 1: Convert the data frame to a simple feature (sf) object
+  dimNames <- names(data_coords)
+  temp_df <- sf::st_as_sf(data_coords, coords = c(dimNames[1], dimNames[2]), crs = crs_code_old)
+  # Step 2: Transform the coordinates to
+  temp_df <- sf::st_transform(temp_df, crs = crs_code_new)
+  # Step 3: Extract the transformed coordinates
+  transformed_coords <- sf::st_coordinates(temp_df)
+  return(transformed_coords)
+}

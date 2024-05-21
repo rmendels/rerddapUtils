@@ -250,17 +250,18 @@ Extracting projected data in ERDDAP  (that is not on a latitude-longitude) grid 
 In both cases the functions try to determine the dataset projection either from the dataset summary given by `rerddap::info()` when projecting the values of a latitude-longitude bounding box,  and when an extract has been made, from the metadata in the extract.  This is done by searching for any of the terms:
 
 ```{r proj_strings, eval = FALSE}
-  proj_strings <- c('proj4string', 'proj_crs_code', 'proj4text', 'grid_mapping_epsg_code',
-                    'grid_mapping_proj4', 'grid_mapping_proj4_params', 'grid_mapping_proj4text',
-                    'WKT')
+   proj_strings <- c('proj4text', 'projection', 'proj4string', 'grid_mapping_epsg_code',
+                    'WKT',  'proj_crs_code',
+                    'grid_mapping_epsg_code', 'grid_mapping_proj4',
+                    'grid_mapping_proj4_params', 'grid_mapping_proj4text')
 
 ```
 
 in the metadata.  If this is not found,  then the user has to provide "CRS",  which can be in any of the forms above. For example the Ice dataset 'nsidcG02202v4sh1day' on the Polarwatch ERDDAP is projected. The bounding box of interest is:
 
 ```{r bounding_box}
-latitude <- c(20, 30)
-longitude <- c(-140, -130)
+latitude <- c( 80., 85.)
+longitude <- c(-170., -165)
 
 ```
 
@@ -268,29 +269,26 @@ then the bounding box in projected coordinates is found from:
 
 ```{r latlon_to_xy, eval = FALSE}
 myURL <- 'https://polarwatch.noaa.gov/erddap/'
-myInfo <- rerddap::info('nsidcG02202v4sh1day', url = myURL)
-latitude <- c(20, 30)
-longitude <- c(-140, -130)
-coords <- latlon_to_xy(myInfo, latitude, longitude)
+myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+coords <- latlon_to_xy(myInfo,  longitude, latitude)
 coords
-
 ```
 
 Similary,  given an extract on a projected coordinate system, the values on terms of latitude and longitude can be found by:
 
 ```{r xy_to_latlon, eval = FALSE} 
-xgrid <- c(162500, 512500)
-ygrid <- c(-437500,-637500)
-xName <- 'xgrid'
-yName <- 'ygrid'
-proj_extract <- rerddap::griddap(myInfo, 
-                time = c('2023-06-30T00:00:00Z', '2023-06-30T00:00:00Z'),
-                ygrid = ygrid,
-                xgrid = xgrid,
-                fields = 'cdr_seaice_conc',
-                url = myURL
-                )
-test <- xy_to_latlon(proj_extract, yName = 'ygrid', xName = 'xgrid')
+rows <- c( -889533.8, -469356.9)
+cols <- c(622858.3, 270983.4)
+myURL <- 'https://polarwatch.noaa.gov/erddap/'
+myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+proj_extract <- rerddap::griddap(myInfo,
+                                  time = c('2023-01-30T00:00:00Z', '2023-01-30T00:00:00Z'),
+                                  rows = rows,
+                                  cols = cols,
+                                  fields = 'IceThickness',
+                                  url = myURL
+  )
+test <- xy_to_latlon(proj_extract)
 head(test)
 
 ```
