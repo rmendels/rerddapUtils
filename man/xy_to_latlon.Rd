@@ -35,8 +35,6 @@ the appropriate Coordinate Reference System (CRS) transformation.
 \examples{
 rows <- c( -889533.8, -469356.9)
 cols <- c(622858.3, 270983.4)
-xName <- 'xgrid'
-yName <- 'ygrid'
 myURL <- 'https://polarwatch.noaa.gov/erddap/'
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 proj_extract <- rerddap::griddap(myInfo,
