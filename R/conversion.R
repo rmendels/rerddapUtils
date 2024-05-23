@@ -27,9 +27,10 @@
 #' myURL <- 'https://polarwatch.noaa.gov/erddap/'
 #' myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 #' proj_extract <- rerddap::griddap(myInfo,
-#'                                  time = c('2023-01-30T00:00:00Z', '2023-01-30T00:00:00Z'),
+#'                                  time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
 #'                                  rows = rows,
 #'                                  cols = cols,
+#'                                  altitude = c(0., 0.),
 #'                                  fields = 'IceThickness',
 #'                                  url = myURL
 #'  )
