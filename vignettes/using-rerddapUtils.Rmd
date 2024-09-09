@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
+library(arrow)
 library(dplyr)
 library(duckdb)
 library(duckplyr)
@@ -232,15 +233,37 @@ split_extract <- griddap_split(wind_info,
 There are many tools that can used to access the duckdb database file,  among others the packages 'dplyr' and 'duckplyr' can be used:
 
 ```{r wind_split_read, eval = FALSE}
-con <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
-tbl(con, "extract") |>
+con_db <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
+tbl(con_db, "extract") |>
      head(5) |>
      collect()
-dbDisconnect(con, shutdown=TRUE)
+dbDisconnect(con_db, shutdown=TRUE)
 ```
 
 Note that the table will always be called "extract".
 
+The default duckdb format is used because it allows for incremental additions to the dataset on disk,  so datasets can be larger than memory. A popular format for storing data is "parquet", or if it is desired to encode geometry information into the data,  then the "geoparquet" format.  To copy the duckdb file to parquet:
+
+```{r wind_split_parquet, eval = FALSE}
+con_db <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
+# Use DuckDB's COPY command to write directly to Parquet file without loading into R
+query <- sprintf("COPY extract TO '%s' (FORMAT 'parquet')", "wind_extract.parquet")
+DBI::dbExecute(con_db, query)
+dbDisconnect(con_db, shutdown=TRUE)
+```
+
+ To write to a geoparquet file the package `geoarrow` cna be used,  which involves first adding the geocoding information - to do so requires reading the entire data into memory so this will not work for datasets larger than memory:
+
+```{r wind_split_geoparquet, eval = FALSE}
+con_db <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
+wind_data <- DBI::dbGetQuery(con_db, "SELECT * FROM extract")
+# Create a geometry column using geoarrow using latitude and longitude
+wind_data <- sf::st_as_sf(wind_data, coords = c("longitude", "latitude"), crs = 4326)
+arrow::write_parquet(wind_data,  "wind_extract_geo.parquet")
+dbDisconnect(con_db, shutdown=TRUE)
+```
+
+The resulting parquet files are half the size of the duckdb file,  or smaller.  While these examples are for writing the duckdb database to the parquet format,  similar steps can be used if the data are in tibbles,  but it may require reading the entire dataset into memory.
 
 ## Working with projected datasets - `latlon_to_xy()` and `xy_to_latlon()`
 
