@@ -7,12 +7,13 @@
 xy_to_latlon(resp, yName = "cols", xName = "rows", crs = NULL)
 }
 \arguments{
-\item{resp}{A response object from a call to \code{rerddap::griddap()}. It is expected to
-be of type \code{griddap_nc}, \code{rxtracto3D}, or \code{rxtractoTrack}, which contains the projected
-coordinate data along with metadata including the dataset's CRS.}
+\item{resp}{A response object from a call to \code{rerddap::griddap()}.
+It is expected to be of type \code{griddap_nc}, \code{rxtracto3D}, or \code{rxtractoTrack},
+which contains the projected coordinate data along with metadata
+including the dataset's CRS.}
 
-\item{yName}{The name of the variable in \code{resp} that represents the Y coordinate
-(typically latitude or northing). Defaults to 'cols'.}
+\item{yName}{The name of the variable in \code{resp} that represents
+the Y coordinate (typically latitude or northing). Defaults to 'cols'.}
 
 \item{xName}{The name of the variable in \code{resp} that represents the X coordinate
 (typically longitude or easting). Defaults to 'rows'.}
@@ -27,23 +28,24 @@ coordinates corresponding to the projected coordinates in the input \code{resp}.
 in the matrix corresponds to a point in \code{resp}.
 }
 \description{
-This function converts the projected coordinates from a 'rerddap::griddap()' response
-into geographical coordinates (latitude and longitude). It supports responses from
-\code{griddap}, \code{rxtracto}, and \code{rxtracto3D} by detecting the response type and applying
-the appropriate Coordinate Reference System (CRS) transformation.
+This function converts the projected coordinates from a 'rerddap::griddap()'
+response into geographical coordinates (latitude and longitude).
+It supports responses from \code{griddap}, \code{rxtracto}, and \code{rxtracto3D} by
+detecting the response type and applying the appropriate
+Coordinate Reference System (CRS) transformation.
 }
 \examples{
 rows <- c( -889533.8, -469356.9)
 cols <- c(622858.3, 270983.4)
-myURL <- 'https://polarwatch.noaa.gov/erddap/'
+myURL <- 'https://coastwatch.noaa.gov/erddap/'
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 proj_extract <- rerddap::griddap(myInfo,
-                                 time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
-                                 rows = rows,
-                                 cols = cols,
-                                 altitude = c(0., 0.),
-                                 fields = 'IceThickness',
-                                 url = myURL
+                         time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
+                         rows = rows,
+                         cols = cols,
+                         altitude = c(0., 0.),
+                         fields = 'IceThickness',
+                         url = myURL
  )
 test <- xy_to_latlon(proj_extract)
 }

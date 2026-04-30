@@ -1,15 +1,17 @@
 #' Convert Projected 'rerddap::griddap()' Coordinates to Latitude-Longitude
 #'
-#' This function converts the projected coordinates from a 'rerddap::griddap()' response
-#' into geographical coordinates (latitude and longitude). It supports responses from
-#' `griddap`, `rxtracto`, and `rxtracto3D` by detecting the response type and applying
-#' the appropriate Coordinate Reference System (CRS) transformation.
+#' This function converts the projected coordinates from a 'rerddap::griddap()'
+#' response into geographical coordinates (latitude and longitude).
+#' It supports responses from `griddap`, `rxtracto`, and `rxtracto3D` by
+#' detecting the response type and applying the appropriate
+#' Coordinate Reference System (CRS) transformation.
 #'
-#' @param resp A response object from a call to `rerddap::griddap()`. It is expected to
-#'   be of type `griddap_nc`, `rxtracto3D`, or `rxtractoTrack`, which contains the projected
-#'   coordinate data along with metadata including the dataset's CRS.
-#' @param yName The name of the variable in `resp` that represents the Y coordinate
-#'   (typically latitude or northing). Defaults to 'cols'.
+#' @param resp A response object from a call to `rerddap::griddap()`.
+#'   It is expected to be of type `griddap_nc`, `rxtracto3D`, or `rxtractoTrack`,
+#'   which contains the projected coordinate data along with metadata
+#'   including the dataset's CRS.
+#' @param yName The name of the variable in `resp` that represents
+#'    the Y coordinate (typically latitude or northing). Defaults to 'cols'.
 #' @param xName The name of the variable in `resp` that represents the X coordinate
 #'   (typically longitude or easting). Defaults to 'rows'.
 #' @param crs An optional CRS code to be used for the transformation.
@@ -24,15 +26,15 @@
 #' @examples
 #' rows <- c( -889533.8, -469356.9)
 #' cols <- c(622858.3, 270983.4)
-#' myURL <- 'https://polarwatch.noaa.gov/erddap/'
+#' myURL <- 'https://coastwatch.noaa.gov/erddap/'
 #' myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 #' proj_extract <- rerddap::griddap(myInfo,
-#'                                  time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
-#'                                  rows = rows,
-#'                                  cols = cols,
-#'                                  altitude = c(0., 0.),
-#'                                  fields = 'IceThickness',
-#'                                  url = myURL
+#'                          time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
+#'                          rows = rows,
+#'                          cols = cols,
+#'                          altitude = c(0., 0.),
+#'                          fields = 'IceThickness',
+#'                          url = myURL
 #'  )
 #' test <- xy_to_latlon(proj_extract)
 xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
@@ -47,8 +49,8 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   base_url <- substr(url, 1, (base_loc + 1))
   dataInfo <- rerddap::info(datasetid, url = base_url)
 
-  proj_strings <- c('proj4text', 'projection', 'proj4string', 'grid_mapping_epsg_code',
-                    'WKT',  'proj_crs_code',
+  proj_strings <- c('proj4text', 'projection', 'proj4string',
+                    'grid_mapping_epsg_code', 'WKT',  'proj_crs_code',
                     'grid_mapping_epsg_code', 'grid_mapping_proj4',
                     'grid_mapping_proj4_params', 'grid_mapping_proj4text')
   # if crs is in extract use that
@@ -58,8 +60,12 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
     if (!is.null(crs)) {
       proj_crs_code <- crs
     } else {
-      print('Could not find CRS information in the dataset and a CRS was not given')
-      stop('Please provide CRS information in the function call.')
+      #print('Could not find CRS information in the dataset and a CRS was not given')
+      # stop('Please provide CRS information in the function call.')
+      cli::cli_abort(c(
+  "Could not find CRS information in the dataset and none was given.",
+  "i" = "Provide CRS information in the function call."
+))
     }
   } else {
     proj_crs_code_index <- match(crs_test, dataInfo$alldata$NC_GLOBAL$attribute_name)
@@ -102,7 +108,7 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
 #' @export
 #'
 #' @examples
-#' myURL <- 'https://polarwatch.noaa.gov/erddap/'
+#' myURL <- 'https://coastwatch.noaa.gov/erddap/'
 #' myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 #' latitude <- c( 80., 85.)
 #' longitude <- c(-170., -165)
@@ -116,7 +122,8 @@ latlon_to_xy <- function (dataInfo, longitude, latitude,  xName = 'rows', yName 
   # put lat-lon values into dataframe
   temp_df <- data.frame(longitude = longitude,  latitude = latitude)
   crs_given <- !is.null(crs)
-  crs_test <- intersect(unlist(proj_strings), unlist(dataInfo$alldata$NC_GLOBAL$attribute_name))
+  crs_test <- intersect(unlist(proj_strings),
+                        unlist(dataInfo$alldata$NC_GLOBAL$attribute_name))
   crs_in_file <- length(crs_test) > 0
 
   # Initialize proj_crs_code
@@ -130,9 +137,14 @@ latlon_to_xy <- function (dataInfo, longitude, latitude,  xName = 'rows', yName 
 
   # Handle different cases
   if (!crs_in_file && !crs_given) {
-    print("No CRS in file and no CRS given")
-    print("Look in dataset metadata for CRS information")
-    stop("Missing CRS information")
+    #print("No CRS in file and no CRS given")
+    #print("Look in dataset metadata for CRS information")
+    #stop("Missing CRS information")
+    cli::cli_abort(c(
+       "Missing CRS information.",
+        "i" = "No CRS found in file and none was provided.",
+        "i" = "Check the dataset metadata for CRS information."
+    ))
   } else if (crs_in_file && !crs_given) {
     # CRS in file, no CRS given
     coordinates <- prepare_and_transform(temp_df, 'EPSG:4326', proj_crs_code[1])
@@ -166,7 +178,8 @@ extract_grid_data <- function(resp, xName, yName) {
 prepare_and_transform <- function(data_coords, crs_code_old, crs_code_new) {
   # Step 1: Convert the data frame to a simple feature (sf) object
   dimNames <- names(data_coords)
-  temp_df <- sf::st_as_sf(data_coords, coords = c(dimNames[1], dimNames[2]), crs = crs_code_old)
+  temp_df <- sf::st_as_sf(data_coords,
+                          coords = c(dimNames[1], dimNames[2]), crs = crs_code_old)
   # Step 2: Transform the coordinates to
   temp_df <- sf::st_transform(temp_df, crs = crs_code_new)
   # Step 3: Extract the transformed coordinates

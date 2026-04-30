@@ -46,4 +46,3 @@ remotes::install_github("rmendels/rerddapUtils")
 ```
 
 More detail and examples can be found in the Vignette.
-

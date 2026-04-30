@@ -5,8 +5,8 @@
 #' given season of the year  (see below).  Arguments are the same in 'rerddap::griddap()'
 #' except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 #' @param datasetx Anything coercable to an object of class info. So the output of a
-#' call to \code{\link{info}}, or a datasetid, which will internally be passed
-#' through \code{\link{info}}
+#' call to \code{\link[rerddap]{info}}, or a datasetid, which will internally be passed
+#' through \code{\link[rerddap]{info}}
 #' @param ... Dimension arguments. See examples. Can be any 1 or more of the
 #' dimensions for the particular dataset - and the dimensions vary by dataset.
 #' For each dimension, pass in a vector of length two, with min and max value
@@ -29,7 +29,8 @@
 #' @export
 #'
 #' @examples
-#' wind_info <- rerddap::info('erdQMekm14day')
+#' myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+#' wind_info <- rerddap::info('erdQMekm14day', url = myURL)
 #' season <- c('03-01', '04-05')
 #' season_extract <- griddap_season(wind_info,
 #'                                  time = c('2015-01-28','2017-01-01'),
@@ -45,10 +46,15 @@ griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = N
 
   x <- datasetx
   if (is.null(season)) {
-    print('no season is given')
-    print('this must be a vector length 2')
-    print('each element of is of form month-day')
-    stop('stopped on error')
+    #print('no season is given')
+    #print('this must be a vector length 2')
+    #print('each element of is of form month-day')
+    #stop('stopped on error')
+    cli::cli_abort(c(
+      "{.arg season} must be provided.",
+      "i" = "It must be a vector of length 2.",
+      "i" = "Each element should be of the form {.val month-day}."
+    ))
   }
   dimargs <- list(...)
   if (length(dimargs) == 0) stop("no dimension arguments passed, see ?griddap")
@@ -71,6 +77,7 @@ griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = N
   url_base <- call_list$url_base
   fields <- call_list$fields
   extract <- griddap_season_request(x, url_base, dimargs, dim_args, fields, season)
+  class(extract)  <- c("griddap_nc", "nc", "list")
   return(extract)
 }
 
@@ -94,7 +101,7 @@ griddap_season_request <- function(info, url_base, dimargs, dim_args, fields, se
   years <- seq(start_year_dt, end_year_dt, 'years')
   CallOptsNames <- c('datasetx',  names(dimargs), 'fields')
   no_dims <- length(names(dimargs))
-  extract = NULL
+  extract <- NULL
   for (year_index in seq_along(years)) {
     my_year <- as.character(lubridate::year(years[year_index]))
     CallOpts <- list(info)

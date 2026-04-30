@@ -25,40 +25,55 @@ library(rerddap)
 library(rerddapUtils)
 ```
  
- `rerddapUtils` is an [R]{style="color:red"} package is a set of four functions desigened to work with and extend the `rerddap` package to provide capabilities requested by users that meet specialized needs which are better not being included in the `rerddao` package.
+ The [R]{style="color:red"} package `rerddapUtils` is a set of four functions designed to work extend the `rerddap` package to provide capabilities requested by users, and that meet specialized needs which are better dealt with in a separate package.
  
  The first function is:
  
 - `griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = NULL, fmt = "nc", url = eurl(), store = disk(), read = TRUE, callopts = list())`
                           
-which will only extract data for the period during the year defined by 'season'.  The second function is:
+which will extract data only for the period during the year defined by 'season'.  
+
+
+The second function is:
   
   
 - `griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_split = NULL, fmt = "nc", url = eurl(), store = disk(), read = TRUE, callopts = list(), aggregate_file = NULL)`
               
-which is designed to split a very large request into pieces defined by 'request_split' and then aggregate the parts either in memory,  in a duckdb database or in a netcdf4 file.  This allows for requests larger than 2GB to be made in an appropriate manner.
- 
-Note that `griddap_season()` and `griddap_split()` are designed to have basically the same interface as `rerddao::griddap()`,  except for one or two  extra function arguments and some arguments that are interpted differently. In both functions the argument 'store = disk()' is ignored.  In `griddap_season` the 'fmt' argument is ignored  while 'season' defines the days during the year to make the extract.
+which splits a very large request into pieces defined by 'request_split',  and then aggregates the parts either in memory,  in a duckdb database, or in a netcdf4 file.  This allows for requests larger than 2GB to be made in an appropriate manner.
 
-In  `griddap_split` the argument 'fmt' defines whether the aggregate download should be stored in memory as a dataframe,  in a duckdb database file,  or in a netcdf file.  For the duckdb and nectdf options, 'aggregate_file' lets you define where to write the file,  if not defined it will set up a temporary file following proper [R]{style="color:red"} guidelines and in both cases the path to the file will be returned.
+In order 
+ 
+Note that `griddap_season()` and `griddap_split()` are designed to mostly have the same interface as `rerddao::griddap()`,  except for one or two  extra function arguments,  as well as  some arguments interpreted differently, such as in both functions the argument 'store = disk()' is ignored.  In `griddap_season()` the 'fmt' argument is ignored  while 'season' defines the days during the year to make the extract.
+
+In  `griddap_split()` the argument 'fmt' defines whether the aggregate download should be stored in memory as a dataframe,  in a duckdb database file,  or in a netcdf file.  For the duckdb and nectdf options, 'aggregate_file' lets you define where to write the file.  If 'aggregate_file'  is not defined a temporary file is created following proper [R]{style="color:red"} guidelines, and in both cases the path to the file is returned.
+
+Two helper functions are provided to work with `griddap_split()`:
+
+- `estimate_griddap_size <- function(info, ..., fields  = "all",cstride  = 1L, spacing = list(), verbose = TRUE)`
+
+and 
+
+- `estimate_griddap_split_size <- function(size_est, splits, verbose = TRUE)`
+
+`estimate_griddap_size()` provides an rough estimate of the size of the size of a download form an `rerddap::griddap()` request,  and `estimate_griddap_split_size()` takes the output from '`estimate_griddap_size()` and estimate the size of the download for each request for a given split of the original request.
 
 The other two functions are designed to make it easier to work with projected datasets:
 
 - `latlon_to_xy <- function (dataInfo, latitude, longitude, yName = 'latitude', xName = 'longitude', crs = NULL) `
 
-which for a given dataset will convert a latitude and longitude request into the projected coordiantes to be used in `rerddao::griddap()`, while the fourth function:
+which for a given dataset will convert a latitude and longitude request into the projected coordinates to be used in `rerddao::griddap()`, while the fourth function:
 
 - `xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL)`
 
-does the reverse,  given an `rerddao::griddap()` extract will convert the projected coordinates into latitiude and longitude values.
+does the reverse,  given an `rerddao::griddap()` extract with projected coordinates, the coordinates are translated into latitiude and longitude values.
 
 This vignette assumes familiarity with the various 'rerddap' functions and how to use them.  More information about the various 'rerddap' functions can be found in the documentation for that package.
 
 ## Extract during a season - `griddap_season()`
 
-The function `griddap_season()` works exactly like the function `rerddap::griddap` except that there is one extra argument,  "season",  which restricts the extract to the part of the year defined by season, and also ignores several of the `rerddap::griddap` options,  as it will ignore what format to downaod the data,  and will only save to a standard `rerddap::griddap` output structure.
+The function `griddap_season()` works exactly like the function `rerddap::griddap` except that there is one extra argument,  "season",  which restricts the extract to the part of the year defined by "season.  `griddap_season()` also ignores several of the `rerddap::griddap` options,  as it ignores the "fmt" option,  and will only save to a standard `rerddap::griddap` output structure.
 
-The argument "season" is a character string such that for a given "year",  paste0(year, '-', season) produces a valid ISO datetime string.  To test "season" is properly formed, use `lubridate::as_datetime()`:
+The argument "season" is a character string such that for a given "year",  paste0(year, '-', season) produces a valid ISO datetime string.  To test that  "season" is properly formed, use `lubridate::as_datetime()`:
 
 ```{r test_season_time}
 year <- '2023'
@@ -68,9 +83,9 @@ test_time <- paste0(year, '-', season)
 lubridate::as_datetime(test_time)
 ```
 
-Even though the example only includes month and day,  hours etc can be included as long as the final result,  when a year is appended,  produces a valid datetime.
+The example only includes month and day,  but hours etc can be included as long as the final result,  when a year is appended,  produces a valid datetime.
 
-As an example call and result, suppose you have a working `rerddap::griddap()` extract given by:
+As an example of using `griddap_season()` and how the function compares to using `rerddap::griddap()`, suppose for an `rerddap::griddap()` extract given by:
 
 ```{r wind_extract, eval=FALSE}
 wind_info <- rerddap::info('erdQMekm14day')
@@ -82,11 +97,12 @@ extract <- rerddap::griddap(wind_info,
 )
 ```
 
-but it is desired to restrict extract to March 1 to May 1 inclusive,  then the following modification of the above using `griddap_season()`produces the desired result:
+it is desired to restrict the extract to March 1 to May 1 inclusive.  Then the following modification of the above using `griddap_season()`produces the desired result:
 
 
 ```{r wind_season}
-wind_info <- rerddap::info('erdQMekm14day')
+wcnURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+wind_info <- rerddap::info('erdQMekm14day', url = wcnURL)
 season <- c('03-01', '05-01')
 season_extract <- griddap_season(wind_info,
  time = c('2015-01-01','2019-01-01'),
@@ -98,7 +114,7 @@ season_extract <- griddap_season(wind_info,
 
 ```
 
-To see that the extract has been limited to the given season:
+To check that the extract has been limited to the given season:
 
 ```{r season_months}
 extract_times  <- lubridate::as_datetime(season_extract$data$time)
@@ -110,16 +126,16 @@ Only results for months 3, 4, and 5 are included,  as per the values of "season"
 
 ## Split an extract into parts - `griddap_split()`
 
-The function `griddap_split()` allows to make `rerddap::griddap()` requests that are larger than the 2GB limit by splitting the request into parts and then combining the results either in memory in a dataframe,  in a netcdf4 file,  or into a duckdb database file.  If the "in memory" option is chosen, there is no check that there is adequate memory,  so it is possible to crash both R and your computer. The nectdf4 and duckdb options depend more on having adequate disk space,  not memory.  Also,  there is no check that the split given will reduce the requests to a small enough size, that is up to the user to estimate.
+The function `griddap_split()` allows `rerddap::griddap()` requests that are larger than the 2GB limit by splitting the request into parts and then combining the results either in memory in a dataframe,  in a netcdf4 file,  or into a duckdb database file.  If the "in memory" option is chosen, there is no check that there is adequate memory,  so it is possible to crash both R and your computer. The nectdf4 and duckdb options depend more on having adequate disk space,  not memory.  Also,  there is no check that the split given will reduce the requests to a small enough size, that is up to the user to estimate.
 
-`griddap_split()` uses the same arguments as `griddap_split()` execpt that:
+`griddap_split()` uses the same arguments as `rerddap::griddap()` except that:
 
 - The "store" and "read" arguments are ignored.
 - "fmt" is one of "memory", "nc", or "duckdb" - default "nc"
 - an added argument "split"
-- an added argument "aggregate_file" - default is to create an R temporary file
+- an added argument "aggregate_file" - default is to create an [R]{style="color:red"} temporary file
 
-The argument "split" is a named list that defines the number of splits in each dimension,  not the values where to make the splits, and a value must be given for each coordinate in the dataset.  So for the dataset 'erdQMekm14day' above,  there are four coordinates,  "time", "altitude", "latitude" and "longitude", to break the request into five "time" parts and two "latitude" and "longitude" parts  (if you remember your combinatorics the original request will be broken into 20 separate requests) use:
+The argument "split" is a named list that defines the number of splits in each dimension,  not the values where to make the splits, and a value must be given for each coordinate in the dataset.  So for the dataset 'erdQMekm14day' above,  there are four coordinates,  "time", "altitude", "latitude" and "longitude", so to break the request into five "time" parts and two "latitude" and "longitude" parts  (if you remember your combinatorics the original request will be broken into 20 separate requests) use:
 
 ```{r request_split}
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
@@ -131,11 +147,11 @@ Note that:
 request_split <- list(time = 5, latitude = 2, longitude = 2)
 ```
 
-will fail,  even though "altitude" is dimension one.  A value must be given for all of the dataset coordinates.
+will fail,  even though "altitude" is dimension one.  A value must be given for all of the coordinates in the dataset.
 
-"fmt" defines how the split extracts will be combined to give one result.  If fmt = "memory"  then the results are combined into a usual `rerddap::griddap()`  in memory,  and that structure is returned by the function.  If fmt = "nc" then the extracts wil be combined into a netcdf4 file,  and a path to the netcdf file is returned by the function. If fmt = "duckdb" then the extracts wil be combined into a duckdb database file,  and a path to the duckdb file is returned by the function.
+"fmt" defines how the split extracts are combined to give one result.  If fmt = "memory"  then the results are combined into a usual `rerddap::griddap()` dataframe in memory,  and that structure is returned by the function.  If fmt = "nc" then the extracts are combined into a netcdf4 file,  and a path to the netcdf file is returned by the function. If fmt = "duckdb" then the extracts are combined into a duckdb database file,  and a path to the duckdb file is returned by the function.
 
-As in the previous example suppose I had an `rerddap::griddap()` extract:
+As in the previous example, given a proposed `rerddap::griddap()` extract:
 
 ```{r wind_extract_redux, eval=FALSE}
 wind_info <- rerddap::info('erdQMekm14day')
@@ -147,11 +163,37 @@ extract <- rerddap::griddap(wind_info,
 )
 ```
 
-which would request an extract too large for ERDDAP to fulfill (that is not the case here so a split is not needed,  but this illustrates the usage).  Then the following modifies the code to split the request and save into a structure in memory:
+then the function `estimate_griddap_size()` provides a rough estimate of the size of the file to be downloaded,  (usually a bit on the low side,  but good enough to see if the download size approaches 2GB):
 
-```{r winf_split_memory, eval = FALSE}
+```{r wind_extract_size, eval = FALSE}
+sz <- estimate_griddap_size(wind_info,
+                            time = c('2015-01-01','2016-01-01'),
+                            latitude = c(20, 40),
+                            longitude = c(220, 240),
+                            fields = 'mod_current',
+)
 
-wind_info <- rerddap::info('erdQMekm14day')
+
+```
+
+In the example the  information is printed out and stored in the variable "sz",  when not set to a variable the information is just printed out.  In this case the download size would be about 13.5 MB.
+
+To obtain an estimate of the download size of each file in a proposed split:
+
+```{r wind_extract_split_size, eval = FALSE}
+estimate_griddap_split_size(sz,
+ splits = request_split
+ )
+
+```
+and each split will be about 714KB in size.
+
+
+Given that the requested splits are small enough, to make the request for the split "request_split" defined above and stored in memory:
+
+```{r wind_split_memory, eval = FALSE}
+wcnURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+wind_info <- rerddap::info('erdQMekm14day', url = wcnURL)
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
 split_extract <- griddap_split(wind_info,
  time = c('2015-01-01','2016-01-01'),
@@ -164,13 +206,13 @@ split_extract <- griddap_split(wind_info,
 str(split_extract)
 ```
 
-On return, "split_extract" will contain the usual `rerddap::griddap()` structure.  Again,  there is no check that there is enough memory to do this operation,  so it is possible to crash R (or your computer) if not used carefully,  but it is not unusual for computers to have 16GB of RAM or more,  so extracts a good bit larger than 2GB can be stored in memory.
+On return, "split_extract" contains the usual `rerddap::griddap()` dataframe.  Again,  there is no check that there is enough memory to do this operation,  so it is possible to crash R (or your computer) if not used carefully.  But common  for computers to have 16GB of RAM or more,  so extracts a good bit larger than 2GB can be stored in memory.
 
 If instead it is desired to store the result in a netcdf4 file:
 
-```{r wind_split_nc, evsl = FALSE}
-
-wind_info <- rerddap::info('erdQMekm14day')
+```{r wind_split_nc, eval = FALSE}
+wcnURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+wind_info <- rerddap::info('erdQMekm14day', url = wcnURL)
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
 split_extract <- griddap_split(wind_info,
  time = c('2015-01-01','2016-01-01'),
@@ -183,14 +225,14 @@ split_extract <- griddap_split(wind_info,
 
 ```
 
-Since "aggregate_file" is not given, the netcdf file will be written to a temporary space and the path to that file will be returned by the function.  The reason for this is it is bad form for an R package to write to a user's space without permission.  To give permission to wrtie to a file of one's choosing, either give the full path to the file (or if just the name is given it will be written to the present directory), such as for the example above:
+The argument "aggregate_file" is not set in the example above, so the netcdf file is written to a temporary location and the path to that file returned by the function.  The reason for this is it is bad form for an R package to write to a user's space without permission (in fact it is prohibited by CRAN).  To set the location where the netcdf file is written,  set "aggregate_file" to the name of the file,  in which case the file is written in the present working,  or else set "aggregate_file" as the full path to the file.  As an example:
 
 ```{r wind_split_nc_named, eval=FALSE}
 
 wind_info <- rerddap::info('erdQMekm14day')
 request_split <- list(time = 5, altitude = 1, latitude = 2, longitude = 2)
 split_extract <- griddap_split(wind_info,
- time = c('2015-01-01','2019-01-01'),
+ time = c('2015-01-01','2016-01-01'),
  latitude = c(20, 40),
  longitude = c(220, 240),
  fields = 'mod_current',
@@ -201,7 +243,7 @@ split_extract <- griddap_split(wind_info,
 
 ```
 
-To access the data in the file, any of the various R packages that can read netcdf4 files can be used, in particular ones that allow for only part of the dataset to be read into memory at a time.  For example to open the result of the netcdf file created above using 'ncdf4' and viewing a summary:
+To access the data in the netcdf file, any of the various R packages that can read netcdf4 files can be used, but it is recommend to only use packages that can read in subsets of the file,  as the data may well be too large for memory.  For example, to open the the netcdf file created above using 'ncdf4' and viewing a summary:
 
 ```{r wind_split_read_nc, eval = FALSE}
 wind_file <- ncdf4::nc_open(split_extract )
@@ -230,7 +272,7 @@ split_extract <- griddap_split(wind_info,
 ```
 
 
-There are many tools that can used to access the duckdb database file,  among others the packages 'dplyr' and 'duckplyr' can be used:
+There are several packages that can read "duckdb" database files,  among them the packages 'dplyr' and 'duckplyr' (note extracts that write to a "duckdb" database file always write to a table named "extract":
 
 ```{r wind_split_read, eval = FALSE}
 con_db <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
@@ -240,9 +282,8 @@ tbl(con_db, "extract") |>
 dbDisconnect(con_db, shutdown=TRUE)
 ```
 
-Note that the table will always be called "extract".
 
-The default duckdb format is used because it allows for incremental additions to the dataset on disk,  so datasets can be larger than memory. A popular format for storing data is "parquet", or if it is desired to encode geometry information into the data,  then the "geoparquet" format.  To copy the duckdb file to parquet:
+The default "duckdb" format is used because it allows for incremental additions to the dataset on disk,  so datasets can be larger than memory. A popular format for storing data is "parquet", or if it is desired to encode geometry information into the data,  then the "geoparquet" format.  To copy the duckdb file to parquet:
 
 ```{r wind_split_parquet, eval = FALSE}
 con_db <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
@@ -252,25 +293,15 @@ DBI::dbExecute(con_db, query)
 dbDisconnect(con_db, shutdown=TRUE)
 ```
 
- To write to a geoparquet file the package `geoarrow` cna be used,  which involves first adding the geocoding information - to do so requires reading the entire data into memory so this will not work for datasets larger than memory:
-
-```{r wind_split_geoparquet, eval = FALSE}
-con_db <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
-wind_data <- DBI::dbGetQuery(con_db, "SELECT * FROM extract")
-# Create a geometry column using geoarrow using latitude and longitude
-wind_data <- sf::st_as_sf(wind_data, coords = c("longitude", "latitude"), crs = 4326)
-arrow::write_parquet(wind_data,  "wind_extract_geo.parquet")
-dbDisconnect(con_db, shutdown=TRUE)
-```
 
 The resulting parquet files are half the size of the duckdb file,  or smaller.  While these examples are for writing the duckdb database to the parquet format,  similar steps can be used if the data are in tibbles,  but it may require reading the entire dataset into memory.
 
 ## Working with projected datasets - `latlon_to_xy()` and `xy_to_latlon()`
 
 
-Extracting projected data in ERDDAP  (that is not on a latitude-longitude) grid can be difficult because most people do not think in terms of the projection in defining the region to make an extract,  and similary once an extract has been made,  it is often desirable to know the coordinates in terms of latitude and longitude.  The functions `latlon_to_xy()` and `xy_to_latlon()` are desigend to help with that process.
+Extracting projected data in ERDDAP  (that is not on a latitude-longitude grid) can be difficult because most people do not think in terms of the projection in defining the region to make an extract,  and similary once an extract has been made,  it is often desirable to know the coordinates in terms of latitude and longitude.  The functions `latlon_to_xy()` and `xy_to_latlon()` are designed to help with this process.
 
-In both cases the functions try to determine the dataset projection either from the dataset summary given by `rerddap::info()` when projecting the values of a latitude-longitude bounding box,  and when an extract has been made, from the metadata in the extract.  This is done by searching for any of the terms:
+In both cases the functions try to determine the dataset projection either from the dataset summary given by `rerddap::info()` when projecting the values of a latitude-longitude bounding box,  or when an extract has been made, from the metadata in the extract.  This is done by searching for any of the terms:
 
 ```{r proj_strings, eval = FALSE}
    proj_strings <- c('proj4text', 'projection', 'proj4string', 'grid_mapping_epsg_code',
@@ -280,7 +311,7 @@ In both cases the functions try to determine the dataset projection either from 
 
 ```
 
-in the metadata.  If this is not found,  then the user has to provide "CRS",  which can be in any of the forms above. For example the Ice dataset 'nsidcG02202v4sh1day' on the Polarwatch ERDDAP is projected. The bounding box of interest is:
+in the metadata.  If this is not found,  then the user has to provide the  "CRS",  which can be in any of the forms above. For example the Ice dataset 'nsidcG02202v4sh1day' on the Coastwatch Central ERDDAP™ is projected. The bounding box of interest is:
 
 ```{r bounding_box}
 latitude <- c( 80., 85.)
@@ -291,7 +322,7 @@ longitude <- c(-170., -165)
 then the bounding box in projected coordinates is found from:
 
 ```{r latlon_to_xy, eval = FALSE}
-myURL <- 'https://polarwatch.noaa.gov/erddap/'
+myURL <- 'https://coastwatch.noaa.gov/erddap/'
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 coords <- latlon_to_xy(myInfo,  longitude, latitude)
 coords
@@ -302,7 +333,7 @@ Similary,  given an extract on a projected coordinate system, the values on term
 ```{r xy_to_latlon, eval = FALSE} 
 rows <- c( -889533.8, -469356.9)
 cols <- c(622858.3, 270983.4)
-myURL <- 'https://polarwatch.noaa.gov/erddap/'
+myURL <- 'https://coastwatch.noaa.gov/erddap/'
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 proj_extract <- rerddap::griddap(myInfo,
                                   time = c('2023-01-30T00:00:00Z', '2023-01-30T00:00:00Z'),
@@ -317,4 +348,4 @@ head(test)
 ```
 
 
-Note that `xy_to_latlon()` will also work with the output from the functions `rerddapXtracto::rxtracto()`, `rerddapXtracto::rxtracto_3D() ` and ``rerddapXtracto::rxtractogon()`.
+Note that `xy_to_latlon()` also works with the output from the functions `rerddapXtracto::rxtracto()`, `rerddapXtracto::rxtracto_3D() ` and ``rerddapXtracto::rxtractogon()`.

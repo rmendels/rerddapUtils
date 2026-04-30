@@ -46,7 +46,7 @@ from \code{rerddap::griddap()} but can be used with any geographic data that req
 coordinate transformation.
 }
 \examples{
-myURL <- 'https://polarwatch.noaa.gov/erddap/'
+myURL <- 'https://coastwatch.noaa.gov/erddap/'
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 latitude <- c( 80., 85.)
 longitude <- c(-170., -165)

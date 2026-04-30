@@ -5,8 +5,8 @@
 #' given season of the year  (see below).  Arguments are the same as in 'rerddap::griddap()'
 #' except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 #' @param datasetx Anything coercable to an object of class info. So the output of a
-#' call to \code{\link{info}}, or a datasetid, which will internally be passed
-#' through \code{\link{info}}
+#' call to \code{\link[rerddap]{info}}, or a datasetid, which will internally be passed
+#' through \code{\link[rerddap]{info}}
 #' @param ... Dimension arguments. See examples. Can be any 1 or more of the
 #' dimensions for the particular dataset - and the dimensions vary by dataset.
 #' For each dimension, pass in a vector of length two, with min and max value
@@ -39,7 +39,8 @@
 #' @export
 #'
 #' @examples
-#' out <- rerddap::info('erdQMekm14day')
+#' myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+#' out <- rerddap::info('erdQMekm14day', url = myURL)
 #' request_split <- list(time = 3, altitude = 1, latitude = 1, longitude = 1)
 #' res <- griddap_split(out,
 #'                      time = c('2015-12-28','2016-01-01'),
@@ -54,18 +55,27 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
 
   x <- datasetx
   if (is.null(request_split)) {
-    print('no split is given')
-    print('this must be a vector the same length of the number of dimensions')
-    print('each elementof the vector is the number of splits in that dimension')
-    stop('stopped on error')
+    #print('no split is given')
+    #print('this must be a vector the same length of the number of dimensions')
+    #print('each elementof the vector is the number of splits in that dimension')
+    #stop('stopped on error')
+    cli::cli_abort(c(
+      "{.arg split} must be provided.",
+      "i" = "It must be a vector the same length as the number of dimensions.",
+      "i" = "Each element is the number of splits for that dimension."
+    ))
   }
   if ( (fmt == 'nc') | (fmt == 'duckdb')) {
     if (!is.null(aggregate_file )) {
       file_check <- file.exists(aggregate_file)
       if (file_check) {
-        print('aggregate file already exists')
-        print('either rename the exising file or change aggregate_file')
-        stop('program is stopping')
+        #print('aggregate file already exists')
+        #print('either rename the exising file or change aggregate_file')
+        #stop('program is stopping')
+        cli::cli_abort(c(
+          "Aggregate file already exists: {.path {aggregate_file}}",
+          "i" = "Rename the existing file or choose a different {.arg aggregate_file}."
+        ))
       }
     }
   }
@@ -84,10 +94,10 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
     check_time_range(dimargs, x)
   }
   call_list <- extract_rerddap_call(x, dimargs, stride, fields, url)
-  dimargs = call_list$dimargs
-  dim_args = call_list$dim_args
-  dimVals = call_list$dimVals
-  url_base = call_list$url_base
+  dimargs <- call_list$dimargs
+  dim_args <- call_list$dim_args
+  dimVals <- call_list$dimVals
+  url_base <- call_list$url_base
   fields <- call_list$fields
   nc_file <- call_list$nc_file
   split_dim <- define_split(dimVals, request_split)
@@ -132,7 +142,7 @@ split_griddap_request <- function(info, url, stride,
   con_db <- NULL
   if (fmt == 'duckdb') {
     if (is.null(aggregate_file)) {
-      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = '.duckdb')
+      aggregate_file <- tempfile("extract", tmpdir = tempdir(), fileext = '.duckdb')
     }
     drv <- duckdb::duckdb()
     con_db <- duckdb::dbConnect(drv, aggregate_file)
@@ -140,7 +150,7 @@ split_griddap_request <- function(info, url, stride,
   # if fmt is netcdf,  create new netcdf file and copy attributes
   if (fmt == 'nc') {
     if (is.null(aggregate_file)) {
-      aggregate_file = tempfile("extract", tmpdir = tempdir(), fileext = '.nc')
+      aggregate_file <- tempfile("extract", tmpdir = tempdir(), fileext = '.nc')
     }
     return <- create_nc_file(info, fields, nc_file, aggregate_file )
     return <- copy_attributes(info, fields, nc_file, aggregate_file)
@@ -222,6 +232,7 @@ recursive_extract <- function(level, request_split, split_dim, griddapOpts,
 
   return(final_result)
 }
+
 
 # Perform a Partial Data Extraction and Aggregation
 #
@@ -418,31 +429,33 @@ aggregate_duckdb <- function(extract, con_db){
 # # Note: This example assumes that `extract` and `aggregate_file.nc` are correctly prepared
 # # and compatible. Actual usage will require specific setup of the NetCDF file and extracts.
 #
-aggregate_netcdf <- function(extract, aggregate_file){
-    extract_file_name <- extract$summary$filename
-    extract_file_root <- ncdf4::nc_open(extract_file_name)
-    root <-  ncdf4::nc_open(aggregate_file, write = TRUE)
-    dim_names <- names(extract$summary$dim)
-    field_names <- names(extract$summary$var)
-    start <- list()
-    count <- list()
-    for (dim_name in dim_names) {
-      extract_dim_values <- extract$data[[dim_name]]
-      if(dim_name == 'time') {
-        extract_dim_values <- lubridate::as_datetime(extract_dim_values)
-        extract_dim_values <- as.numeric(extract_dim_values)
-      }
-      file_dim_values <- ncdf4::ncvar_get(root, dim_name)
-      dim_indices <- which(file_dim_values >= min(extract_dim_values) & file_dim_values <= max(extract_dim_values))
-      start[[dim_name]] <- dim_indices[1]
-      count[[dim_name]] <- length(dim_indices)
+
+aggregate_netcdf <- function(extract, aggregate_file) {
+  extract_nc <- ncdf4::nc_open(extract$summary$filename)
+  on.exit(ncdf4::nc_close(extract_nc), add = TRUE)
+  root <- ncdf4::nc_open(aggregate_file, write = TRUE)
+  on.exit(ncdf4::nc_close(root), add = TRUE)
+
+  # Compute start/count indices for each dimension
+  dim_indices <- lapply(names(extract$summary$dim), function(dim_name) {
+    extract_vals <- extract$data[[dim_name]]
+    if (dim_name == "time") {
+      extract_vals <- as.numeric(lubridate::as_datetime(extract_vals))
     }
-    start <-rev( unlist(start))
-    count = rev(unlist(count))
-    for (field in field_names) {
-      vals <- ncdf4::ncvar_get(extract_file_root, field)
-      ncdf4::ncvar_put(root, field, vals, start = start, count = count)
-    }
-    ncdf4::nc_close(root)
-    ncdf4::nc_close(extract_file_root)
+    file_vals <- ncdf4::ncvar_get(root, dim_name)
+    idx <- which(file_vals >= min(extract_vals) & file_vals <= max(extract_vals))
+    list(start = idx[1], count = length(idx))
+  })
+
+  #start <- rev(sapply(dim_indices, `[[`, "start"))
+  #count <- rev(sapply(dim_indices, `[[`, "count"))
+  start <- rev(vapply(dim_indices, `[[`, FUN.VALUE = numeric(1), "start"))
+  count <- rev(vapply(dim_indices, `[[`, FUN.VALUE = numeric(1), "count"))
+  # Write each field into the aggregate file
+  lapply(names(extract$summary$var), function(field) {
+    ncdf4::ncvar_put(root, field, ncdf4::ncvar_get(extract_nc, field),
+                     start = start, count = count)
+  })
+
+  invisible(NULL)
 }

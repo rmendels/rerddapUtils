@@ -25,19 +25,21 @@
 get_dimVals <- function(x, dimargs) {
   base_url <- paste0(x$base_url, '/')
   call_args <- list(datasetx = x)
-  for (i in seq_along(dimargs)){
-    call_args <- c(call_args, dimargs[i])
-    names(call_args)[i + 1] <- names(dimargs)[i]
-  }
+  call_args <- c(call_args, dimargs)
+#  for (i in seq_along(dimargs)){
+#    call_args <- c(call_args, dimargs[i])
+#    names(call_args)[i + 1] <- names(dimargs)[i]
+#  }
   call_args$fields <- 'none'
-  call_args$read = FALSE
+  call_args$read <- FALSE
   call_args$url <- base_url
   temp_result <- do.call(rerddap::griddap, call_args)
-  dimVals = list()
-  for (i in seq_along(temp_result$summary$dim)){
-    temp <- temp_result$summary$dim[[i]]
-    dimVals[[temp$name]] <- temp$vals
-  }
+  dimVals <- lapply(temp_result$summary$dim, `[[`, "vals")
+#  dimVals = list()
+#  for (i in seq_along(temp_result$summary$dim)){
+#    temp <- temp_result$summary$dim[[i]]
+#   dimVals[[temp$name]] <- temp$vals
+#  }
   if ('time' %in% names(dimVals)) {
     dimVals$time <- as.character(as.POSIXlt(dimVals$time, origin = '1970-01-01', tz = "GMT"))
   }
@@ -147,35 +149,74 @@ extract_rerddap_call <- function(x, dimargs, stride, fields, url) {
 # print(split_info$no_extract)
 # print(split_info$dim_indices)
 #
-define_split_nc <- function(source_nc, split){
-  no_time <- source_nc$dim[['time']]$len
-  no_altitude <- source_nc$dim[['altitude']]$len
-  no_latitude <- source_nc$dim[['latitude']]$len
-  no_longitude <- source_nc$dim[['longitude']]$len
-  indices <- split > 1
-  split[indices] <- unlist(split[indices]) + 1
-  time_indices <- as.integer(seq(1, no_time, length.out = split$time))
-  altitude_indices <-as.integer(seq(1, no_altitude, length.out = split$altitude))
-  latitude_indices <- as.integer(seq(1, no_latitude, length.out = split$latitude))
-  longitude_indices <- as.integer(seq(1, no_longitude,  length.out = split$longitude))
-  no_time_extracts <-  ifelse(length(time_indices) == 1, 1, length(time_indices) - 1)
-  no_altitude_extracts <-  ifelse(length(altitude_indices) == 1, 1, length(altitude_indices) - 1)
-  no_latitude_extracts <-  ifelse(length(latitude_indices) == 1, 1, length(latitude_indices) - 1)
-  no_longitude_extracts <-  ifelse(length(longitude_indices) == 1, 1, length(longitude_indices) - 1)
-  no_extracts <- data.frame(time = no_time_extracts,
-                            altitude = no_altitude_extracts,
-                            latitude = no_latitude_extracts,
-                            longitude = no_longitude_extracts
-  )
-  dim_indices <- data.frame(time = time_indices,
-                            altitude = altitude_indices,
-                            latitude = latitude_indices,
-                            longitude = longitude_indices
-  )
-  return(list(no_extract = no_extracts, dim_indices = dim_indices))
+#define_split_nc <- function(source_nc, split){
+#  no_time <- source_nc$dim[['time']]$len
+#  no_altitude <- source_nc$dim[['altitude']]$len
+#  no_latitude <- source_nc$dim[['latitude']]$len
+#  no_longitude <- source_nc$dim[['longitude']]$len
+#  indices <- split > 1
+#  split[indices] <- unlist(split[indices]) + 1
+#  time_indices <- as.integer(seq(1, no_time, length.out = split$time))
+#  altitude_indices <-as.integer(seq(1, no_altitude, length.out = split$altitude))
+#  latitude_indices <- as.integer(seq(1, no_latitude, length.out = split$latitude))
+#  longitude_indices <- as.integer(seq(1, no_longitude,  length.out = split$longitude))
+#  no_time_extracts <-  ifelse(length(time_indices) == 1, 1, length(time_indices) - 1)
+#  no_altitude_extracts <-  ifelse(length(altitude_indices) == 1, 1, length(altitude_indices) - 1)
+#  no_latitude_extracts <-  ifelse(length(latitude_indices) == 1, 1, length(latitude_indices) - 1)
+#  no_longitude_extracts <-  ifelse(length(longitude_indices) == 1, 1, length(longitude_indices) - 1)
+#  no_extracts <- data.frame(time = no_time_extracts,
+#                            altitude = no_altitude_extracts,
+#                            latitude = no_latitude_extracts,
+#                            longitude = no_longitude_extracts
+#  )
+#  dim_indices <- data.frame(time = time_indices,
+#                            altitude = altitude_indices,
+#                            latitude = latitude_indices,
+#                            longitude = longitude_indices
+#  )
+#  return(list(no_extract = no_extracts, dim_indices = dim_indices))
+#}
+define_split_nc <- function(source_nc, split) {
+
+  # Get dimension names and lengths directly from source_nc
+  dim_names <- names(source_nc$dim)
+  #dim_lengths <- sapply(dim_names, function(d) source_nc$dim[[d]]$len)
+  dim_lengths <- vapply(dim_names, function(d) source_nc$dim[[d]]$len,
+                        FUN.VALUE = numeric(1))
+
+  # For any dimension not specified in split, default to 1 (no split)
+  split_vals <- stats::setNames(rep(1L, length(dim_names)), dim_names)
+  split_vals[names(split)] <- unlist(split[names(split)])
+
+  # Increment splits > 1 by 1 (to get correct boundary indices)
+  split_vals[split_vals > 1] <- split_vals[split_vals > 1] + 1
+
+  # Calculate indices for each dimension
+  dim_indices_list <- lapply(dim_names, function(d) {
+    as.integer(seq(1, dim_lengths[d], length.out = split_vals[d]))
+  })
+  names(dim_indices_list) <- dim_names
+
+  # Calculate number of extracts per dimension
+  no_extracts_list <- lapply(dim_names, function(d) {
+    idx <- dim_indices_list[[d]]
+    ifelse(length(idx) == 1, 1L, length(idx) - 1L)
+  })
+  names(no_extracts_list) <- dim_names
+
+  # Pad shorter vectors with NA so data.frame() works when lengths differ
+  # max_len <- max(sapply(dim_indices_list, length))
+  max_len <- max(vapply(dim_indices_list, length, FUN.VALUE = integer(1)))
+  dim_indices_padded <- lapply(dim_indices_list, function(x) {
+    length(x) <- max_len
+    x
+  })
+
+  return(list(
+    no_extract  = as.data.frame(no_extracts_list),
+    dim_indices = as.data.frame(dim_indices_padded)
+  ))
 }
-
-
 
 
 # Create a New NetCDF File with Specified Fields from a Source File
@@ -212,99 +253,96 @@ define_split_nc <- function(source_nc, split){
 # create_nc_file(data_info, fields, source_file, destination_file)
 # # This will create 'destination_file.nc' containing only the 'temperature' variable.
 #
- create_nc_file <- function(data_info, fields, source_file, destination_file) {
-  # Open the source netCDF file
+
+create_nc_file <- function(data_info, fields, source_file, destination_file) {
   source_nc <- ncdf4::nc_open(source_file)
-  # Copy dimensions
-  source_dim <- list()
-  for (dim_name in rev(names(source_nc$dim))) {
-    source_dim[[dim_name]] <- ncdf4::ncdim_def(dim_name,
-                                        source_nc$dim[[dim_name]]$units,
-                                        source_nc$dim[[dim_name]]$vals
+  on.exit(ncdf4::nc_close(source_nc), add = TRUE)
+
+  # Copy dimensions from source
+  source_dim <- lapply(rev(source_nc$dim), function(d) {
+    ncdf4::ncdim_def(d$name, d$units, d$vals)
+  })
+
+  # Define output variables
+  source_var <- lapply(fields, function(var_name) {
+    attrs <- data_info$alldata[[var_name]]
+    ncdf4::ncvar_def(
+      name    = var_name,
+      units   = attrs$value[attrs$attribute_name == "units"],
+      dim     = source_dim,
+      missval = NA,
+      prec    = attrs$data_type[1]
     )
-  }
-  # add fields from field list
-  source_var <- list()
-  for (var_name in fields) {
-      prec <- data_info$alldata[[var_name]]$data_type[1]
-      units_loc <- which(data_info$alldata[[var_name]]$attribute_name == 'units')
-      units <- data_info$alldata[[var_name]]$value[units_loc]
-      source_var[[var_name]]  <- ncdf4::ncvar_def(name = var_name,
-                                         # units = source_nc$var[[var_name]]$units,
-                                         units = units,
-                                         dim = source_dim,
-                                         missval = NA,
-                                         #prec = source_nc$var[[var_name]]$prec
-                                         prec = prec
-    )
-  }
+  }) |> stats::setNames(fields)
+
   dest_nc <- ncdf4::nc_create(destination_file, vars = source_var, force_v4 = TRUE)
-  # Close the netCDF files
-  ncdf4::nc_close(source_nc)
-  ncdf4::nc_close(dest_nc)
- }
+  on.exit(ncdf4::nc_close(dest_nc), add = TRUE)
+}
 
 # ----------------------------------------
 # Function to copy attributes
- # Copy Attributes from Source to Destination NetCDF File
- #
- # This function copies global attributes and specified variable attributes from a source NetCDF
- # file to a destination NetCDF file. It is useful for replicating metadata when creating a new
- # NetCDF file based on an existing file, ensuring that the new file retains relevant contextual
- # information and variable-specific attributes.
- #
- # @param data_info A data structure containing metadata and attribute values for the variables
- #   specified in `fields`. This metadata is used to copy variable-specific attributes to the
- #   destination file.
- # @param fields A vector of strings specifying the names of the variables for which attributes
- #   should be copied from the source to the destination file. These should correspond to variable
- #   names in both the source file and the `data_info` metadata structure.
- # @param source_file A string specifying the path to the source NetCDF file from which attributes
- #   will be copied.
- # @param destination_file A string specifying the path to the destination NetCDF file where the
- #   attributes will be copied to.
- #
- # @return This function does not return a value but modifies the destination NetCDF file by
- #   copying attributes for global scope and for the specified variables from the source file.
- #
- # @examples
- # data_info <- list(
- #   alldata = list(
- #     temperature = list(values = list(units = "Celsius", long_name = "Sea Surface Temperature")),
- #     salinity = list(values = list(units = "PSU", long_name = "Sea Surface Salinity"))
- #   )
- # )
- # fields <- c("temperature", "salinity")
- # source_file <- "path/to/source_file.nc"
- # destination_file <- "path/to/destination_file.nc"
- #
- # copy_attributes(data_info, fields, source_file, destination_file)
- # # This will copy global attributes and attributes for 'temperature' and 'salinity' variables.
- #
- copy_attributes <- function(data_info, fields, source_file, destination_file ) {
-  # Open the source and destination netCDF files
+# Copy Attributes from Source to Destination NetCDF File
+#
+# This function copies global attributes and specified variable attributes from a source NetCDF
+# file to a destination NetCDF file. It is useful for replicating metadata when creating a new
+# NetCDF file based on an existing file, ensuring that the new file retains relevant contextual
+# information and variable-specific attributes.
+#
+# @param data_info A data structure containing metadata and attribute values for the variables
+#   specified in `fields`. This metadata is used to copy variable-specific attributes to the
+#   destination file.
+# @param fields A vector of strings specifying the names of the variables for which attributes
+#   should be copied from the source to the destination file. These should correspond to variable
+#   names in both the source file and the `data_info` metadata structure.
+# @param source_file A string specifying the path to the source NetCDF file from which attributes
+#   will be copied.
+# @param destination_file A string specifying the path to the destination NetCDF file where the
+#   attributes will be copied to.
+#
+# @return This function does not return a value but modifies the destination NetCDF file by
+#   copying attributes for global scope and for the specified variables from the source file.
+#
+# @examples
+# data_info <- list(
+#   alldata = list(
+#     temperature = list(values = list(units = "Celsius", long_name = "Sea Surface Temperature")),
+#     salinity = list(values = list(units = "PSU", long_name = "Sea Surface Salinity"))
+#   )
+# )
+# fields <- c("temperature", "salinity")
+# source_file <- "path/to/source_file.nc"
+# destination_file <- "path/to/destination_file.nc"
+#
+# copy_attributes(data_info, fields, source_file, destination_file)
+# # This will copy global attributes and attributes for 'temperature' and 'salinity' variables.
+#
+
+copy_attributes <- function(data_info, fields, source_file, destination_file) {
   source_nc <- ncdf4::nc_open(source_file)
+  on.exit(ncdf4::nc_close(source_nc), add = TRUE)
   dest_nc <- ncdf4::nc_open(destination_file, write = TRUE)
-  # Copy global attributes
+  on.exit(ncdf4::nc_close(dest_nc), add = TRUE)
+
+  # Copy global attributes from source
   global_attrs <- ncdf4::ncatt_get(source_nc, 0)
-  for (attr_name in names(global_attrs)) {
+  lapply(names(global_attrs), function(attr_name) {
     ncdf4::ncatt_put(dest_nc, 0, attr_name, global_attrs[[attr_name]])
-  }
-  # copy for each var
-  for (var_name in fields) {
-    # var_attrs <- ncatt_get(source_nc, var_name)
-    var_attrs <- data_info$alldata[[var_name]]$values
-    var_attrs <- var_attrs[-1]
-    for (attr in names(var_attrs)) {
-      if(!(attr == '_FillValue')) {
-        ncdf4::ncatt_put(dest_nc, var_name, attr, var_attrs[[attr]])
-      }
-    }
-  }
-  # Close the netCDF files
-  ncdf4::nc_close(source_nc)
-  ncdf4:: nc_close(dest_nc)
+  })
+
+  # Copy variable attributes from data_info (skipping first and _FillValue)
+  lapply(fields, function(var_name) {
+    var_attrs <- data_info$alldata[[var_name]]$values[-1]
+    var_attrs <- var_attrs[names(var_attrs) != "_FillValue"]
+    lapply(names(var_attrs), function(attr) {
+      ncdf4::ncatt_put(dest_nc, var_name, attr, var_attrs[[attr]])
+    })
+  })
+
+  invisible(NULL)
 }
+
+
+
 
 
 #############################
@@ -322,10 +360,14 @@ field_handler <- function(x, y){
 
 check_dims <- function(dimargs, .info) {
   if (any(lengths(dimargs )!= 2)) {
-    print("All coordinate bounds must be of length 2, even if same value")
-    print("Present values are:")
-    print(dimargs)
-    stop("rerddap halted", call. = FALSE)
+    #print("All coordinate bounds must be of length 2, even if same value")
+    #print("Present values are:")
+    #print(dimargs)
+    #stop("rerddap halted", call. = FALSE)
+    cli::cli_abort(c(
+      "All coordinate bounds must be of length 2, even if the same value.",
+      "i" = "Present values: {.val {dimargs}}"
+    ))
   }
   if (!all(names(dimargs) %in% dimvars(.info))) {
     stop(sprintf("Some input dimensions (%s) don't match those in dataset (%s)",
@@ -336,8 +378,11 @@ check_dims <- function(dimargs, .info) {
 
 check_lon_text <- function(dimargs) {
   if (!is.null(dimargs$longitude)) {
-    if (any(sapply(dimargs$longitude, class) == "character")) {
-      txt <- dimargs$longitude[sapply(dimargs$longitude, class) == "character"]
+    #if (any(sapply(dimargs$longitude, class) == "character")) {
+      #txt <- dimargs$longitude[sapply(dimargs$longitude, class) == "character"]
+    if (any(vapply(dimargs$longitude, class, FUN.VALUE = character(1)) == "character")) {
+      txt <- dimargs$longitude[vapply(dimargs$longitude, class,
+                                        FUN.VALUE = character(1)) == "character"]
       if (!all(grepl("last", txt))) stop("Only text values allowed are 'last' & variants on that", call. = FALSE)
     }
   }
@@ -345,8 +390,11 @@ check_lon_text <- function(dimargs) {
 
 check_lat_text <- function(dimargs) {
   if (!is.null(dimargs$latitude)) {
-    if (any(sapply(dimargs$latitude, class) == "character")) {
-      txt <- dimargs$latitude[sapply(dimargs$latitude, class) == "character"]
+    #if (any(sapply(dimargs$latitude, class) == "character")) {
+      #txt <- dimargs$latitude[sapply(dimargs$latitude, class) == "character"]
+    if (any(vapply(dimargs$latitude, class, FUN.VALUE = character(1)) == "character")) {
+      txt <- dimargs$latitude[vapply(dimargs$latitude, class,
+                                       FUN.VALUE = character(1)) == "character"]
       if (!all(grepl("last", txt))) stop("Only text values allowed are 'last' & variants on that", call. = FALSE)
     }
   }
@@ -354,7 +402,8 @@ check_lat_text <- function(dimargs) {
 
 is_lon_text <- function(dimargs) {
   if (!is.null(dimargs$longitude)) {
-    any(sapply(dimargs$longitude, class) == "character")
+    #any(sapply(dimargs$longitude, class) == "character")
+    any(vapply(dimargs$longitude, class, FUN.VALUE = character(1)) == "character")
   } else {
     FALSE
   }
@@ -362,7 +411,8 @@ is_lon_text <- function(dimargs) {
 
 is_lat_text <- function(dimargs) {
   if (!is.null(dimargs$latitude)) {
-    any(sapply(dimargs$latitude, class) == "character")
+    # any(sapply(dimargs$latitude, class) == "character")
+    any(vapply(dimargs$latitude, class, FUN.VALUE = character(1)) == "character")
   } else {
     FALSE
   }
@@ -380,12 +430,17 @@ check_time_range <- function(dimargs, x) {
   tt <- rev(tt)
   if (!('last' %in% dimargs$time)){
     if((dimargs$time[1] < tt[1]) | (dimargs$time[2] > tt[2])) {
-      print('time bounds are out of range')
-      print('You gave: ')
-      print(dimargs$time)
-      print("Dataset times are: ")
-      print(tt)
-      stop('rerddap halted', call. = FALSE)
+      #print('time bounds are out of range')
+      #print('You gave: ')
+      #print(dimargs$time)
+      #print("Dataset times are: ")
+      #print(tt)
+      #stop('rerddap halted', call. = FALSE)
+      cli::cli_abort(c(
+        "Requested time bounds are outside the dataset range.",
+        "x" = "You requested: {.val {dimargs$time[1]}} to {.val {dimargs$time[2]}}.",
+        "i" = "Dataset range: {.val {tt[1]}} to {.val {tt[2]}}."
+      ))
     }
   }
 }

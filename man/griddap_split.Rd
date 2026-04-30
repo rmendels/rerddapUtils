@@ -20,8 +20,8 @@ griddap_split(
 }
 \arguments{
 \item{datasetx}{Anything coercable to an object of class info. So the output of a
-call to \code{\link{info}}, or a datasetid, which will internally be passed
-through \code{\link{info}}}
+call to \code{\link[rerddap]{info}}, or a datasetid, which will internally be passed
+through \code{\link[rerddap]{info}}}
 
 \item{...}{Dimension arguments. See examples. Can be any 1 or more of the
 dimensions for the particular dataset - and the dimensions vary by dataset.
@@ -77,7 +77,8 @@ given season of the year  (see below).  Arguments are the same as in 'rerddap::g
 except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 }
 \examples{
-out <- rerddap::info('erdQMekm14day')
+myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+out <- rerddap::info('erdQMekm14day', url = myURL)
 request_split <- list(time = 3, altitude = 1, latitude = 1, longitude = 1)
 res <- griddap_split(out,
                      time = c('2015-12-28','2016-01-01'),

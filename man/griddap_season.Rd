@@ -19,8 +19,8 @@ griddap_season(
 }
 \arguments{
 \item{datasetx}{Anything coercable to an object of class info. So the output of a
-call to \code{\link{info}}, or a datasetid, which will internally be passed
-through \code{\link{info}}}
+call to \code{\link[rerddap]{info}}, or a datasetid, which will internally be passed
+through \code{\link[rerddap]{info}}}
 
 \item{...}{Dimension arguments. See examples. Can be any 1 or more of the
 dimensions for the particular dataset - and the dimensions vary by dataset.
@@ -58,7 +58,8 @@ given season of the year  (see below).  Arguments are the same in 'rerddap::grid
 except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 }
 \examples{
-wind_info <- rerddap::info('erdQMekm14day')
+myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+wind_info <- rerddap::info('erdQMekm14day', url = myURL)
 season <- c('03-01', '04-05')
 season_extract <- griddap_season(wind_info,
                                  time = c('2015-01-28','2017-01-01'),
