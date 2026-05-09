@@ -78,12 +78,16 @@ except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 }
 \examples{
 myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
+if (inherits(response, "try-error")) {
+  stop("The ERDDAP\u2122 server is not responding")
+}
 out <- rerddap::info('erdQMekm14day', url = myURL)
-request_split <- list(time = 3, altitude = 1, latitude = 1, longitude = 1)
+request_split <- list(time = 2, altitude = 1, latitude = 1, longitude = 1)
 res <- griddap_split(out,
                      time = c('2015-12-28','2016-01-01'),
-                     latitude = c(20, 40),
-                     longitude = c(220, 240),
+                     latitude = c(20, 25),
+                     longitude = c(220, 225),
                      fields = 'mod_current',
                      request_split = request_split
                      )

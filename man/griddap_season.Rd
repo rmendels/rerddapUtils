@@ -59,12 +59,16 @@ except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 }
 \examples{
 myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
+if (inherits(response, "try-error")) {
+   stop("The ERDDAP\u2122 server is not responding")
+}
 wind_info <- rerddap::info('erdQMekm14day', url = myURL)
-season <- c('03-01', '04-05')
+season <- c('03-01', '03-15')
 season_extract <- griddap_season(wind_info,
                                  time = c('2015-01-28','2017-01-01'),
-                                 latitude = c(20, 40),
-                                 longitude = c(220, 240),
+                                 latitude = c(20, 25),
+                                 longitude = c(220, 225),
                                  fields = 'mod_current',
                                  season = season
                                  )

@@ -1,14 +1,11 @@
 
-# rerddapUtils (Version 0.0.0.9000)
-
-******
-THIS VERSION IS FOR TESTING ONLY
-DO NOT USE IN IMPORTANT PROJECTS
-SOME TESTS FOR BAD INPUT STILL NEED TO BE ADDED
-******
+# rerddapUtils (Version 1.0.0)
 
 
- `rerddapUtils` is an `R` package that is a set of four functions designed to work with and extend the `rerddap` package to provide capabilities requested by users that meet specialized needs which are better not being included in the `rerddap` package.
+ `rerddapUtils` is an `R` package that is a set of four main 
+ functions designed to work with and extend the `rerddap` package
+ to provide capabilities requested by users that meet specialized needs 
+ which are better not being included in the `rerddap` package.
  
  The first function is:
  
@@ -35,11 +32,21 @@ which for a given dataset will convert a latitude and longitude request into the
 
 does the reverse,  given an `rerddap::griddap()` extract will convert the projected coordinates into latitude and longitude values.
 
-This vignette assumes familiarity with the various 'rerddap' functions and how to use them.  More information about the various 'rerddap' functions can be found in the documentation for that package.
+There are also two helper functions to give a rough estimate of the size of an `rerddap` request:
+
+-  `estimate_griddap_size <- function(info,  ..., fields  = "all", stride  = 1L, spacing = list(), verbose = TRUE)`
+
+which estimates the size of a regular `rerddap` request, and:
+
+-  `estimate_griddap_split_size <- function(size_est, splits, verbose = TRUE)`
+
+which estimates the size of the proposed split for the function `griddap_split()`.
+
+The vignette assumes familiarity with the various 'rerddap' functions and how to use them.  More information about the various 'rerddap' functions can be found in the documentation for that package.
 
 ## Installation
 
-You can install the development version of rerddapUtils like so:
+You can install the development version of rerddapUtils from Github:
 
 ``` r
 remotes::install_github("rmendels/rerddapUtils")

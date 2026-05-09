@@ -50,7 +50,12 @@
 #' \dontrun{
 #'   library(rerddap)
 #'
-#'   info <- info("erdMH1chla8day")
+#'   myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
+#'   response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
+#'   if (inherits(response, "try-error")) {
+#'      stop("The ERDDAP\u2122 server is not responding")
+#'   }
+#'   info <- rerddap::info("erdMH1chla8day", url = myURL)
 #'   estimate_griddap_size(info,
 #'     latitude  = c(30, 50),
 #'     longitude = c(-140, -110),
@@ -399,6 +404,10 @@ estimate_griddap_size <- function(info,
 #'   library(rerddap)
 #'
 #'   myURL = 'https://coastwatch.pfeg.noaa.gov/erddap/'
+#'   response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
+#'   if (inherits(response, "try-error")) {
+#'      stop("The ERDDAP\u2122 server is not responding")
+#'   }
 #'   wind_info <- info("erdQMekm14day", url = myURL)
 #'   sz <- estimate_griddap_size(wind_info,
 #'     latitude  = c(20, 40),
