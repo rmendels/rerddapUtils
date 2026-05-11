@@ -40,8 +40,9 @@ cols <- c(622858.3, 270983.4)
 myURL <- 'https://coastwatch.noaa.gov/erddap/'
 response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
 if (inherits(response, "try-error")) {
-   stop("The ERDDAP\u2122 server is not responding")
-}
+   message("The ERDDAP\u2122 server is not responding")
+} else
+{
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 proj_extract <- rerddap::griddap(myInfo,
                          time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
@@ -52,4 +53,5 @@ proj_extract <- rerddap::griddap(myInfo,
                          url = myURL
  )
 test <- xy_to_latlon(proj_extract)
+}
 }

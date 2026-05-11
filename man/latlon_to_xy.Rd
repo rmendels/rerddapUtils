@@ -49,10 +49,12 @@ coordinate transformation.
 myURL <- 'https://coastwatch.noaa.gov/erddap/'
 response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
 if (inherits(response, "try-error")) {
- stop("The ERDDAP\u2122 server is not responding")
-}
+ message("The ERDDAP\u2122 server is not responding")
+} else
+{
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 latitude <- c( 80., 85.)
 longitude <- c(-170., -165)
 coords <- latlon_to_xy(myInfo,  longitude, latitude)
+}
 }
