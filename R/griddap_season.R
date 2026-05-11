@@ -33,7 +33,8 @@
 #' response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
 #' if (inherits(response, "try-error")) {
 #'    stop("The ERDDAP\u2122 server is not responding")
-#' }
+#' } else
+#' {
 #' wind_info <- rerddap::info('erdQMekm14day', url = myURL)
 #' season <- c('03-01', '03-15')
 #' season_extract <- griddap_season(wind_info,
@@ -43,6 +44,7 @@
 #'                                  fields = 'mod_current',
 #'                                  season = season
 #'                                  )
+#'  }
 
 griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = NULL, fmt = "nc",
                           url = rerddap::eurl(), store = rerddap::disk(),

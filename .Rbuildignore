@@ -1,2 +1,4 @@
 ^rerddapUtils\.Rproj$
 ^\.Rproj\.user$
+^\.positai$
+^\.claude$

@@ -43,7 +43,8 @@
 #' response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
 #' if (inherits(response, "try-error")) {
 #'   stop("The ERDDAP\u2122 server is not responding")
-#' }
+#' } else
+#' {
 #' out <- rerddap::info('erdQMekm14day', url = myURL)
 #' request_split <- list(time = 2, altitude = 1, latitude = 1, longitude = 1)
 #' res <- griddap_split(out,
@@ -53,6 +54,7 @@
 #'                      fields = 'mod_current',
 #'                      request_split = request_split
 #'                      )
+#' }
 griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_split = NULL, fmt = "nc",
                     url = rerddap::eurl(), store = rerddap::disk(),
                     read = TRUE, callopts = list(), aggregate_file = NULL) {
