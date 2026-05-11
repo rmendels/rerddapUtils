@@ -78,9 +78,9 @@ except for the added 'season' parameter.  'read' and 'fmt' options are ignored.
 }
 \examples{
 myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
-response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
+response <- try(httr::HEAD(myURL, httr::timeout(20)), silent = TRUE)
 if (inherits(response, "try-error")) {
-  stop("The ERDDAP\u2122 server is not responding")
+  message("The ERDDAP\u2122 server is not responding")
 } else
 {
 out <- rerddap::info('erdQMekm14day', url = myURL)
