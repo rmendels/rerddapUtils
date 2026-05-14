@@ -65,9 +65,9 @@ if (inherits(response, "try-error")) {
 } else
 {
 wind_info <- rerddap::info('erdQMekm14day', url = myURL)
-season <- c('03-01', '03-15')
+season <- c('03-01', '03-04')
 season_extract <- griddap_season(wind_info,
-                                 time = c('2015-01-28','2017-01-01'),
+                                 time = c('2015-01-01','2017-01-01'),
                                  latitude = c(20, 25),
                                  longitude = c(220, 225),
                                  fields = 'mod_current',

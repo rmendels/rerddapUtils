@@ -37,6 +37,8 @@ Coordinate Reference System (CRS) transformation.
 \examples{
 rows <- c( -889533.8, -469356.9)
 cols <- c(622858.3, 270983.4)
+rows <- c( -889533.8, -469356.9)
+cols <- c(622858.3, 270983.4)
 myURL <- 'https://coastwatch.noaa.gov/erddap/'
 response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
 if (inherits(response, "try-error")) {
@@ -44,14 +46,18 @@ if (inherits(response, "try-error")) {
 } else
 {
 myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
-proj_extract <- rerddap::griddap(myInfo,
-                         time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
-                         rows = rows,
-                         cols = cols,
-                         altitude = c(0., 0.),
-                         fields = 'IceThickness',
-                         url = myURL
- )
-test <- xy_to_latlon(proj_extract)
+   proj_extract <- try(rerddap::griddap(myInfo,
+                            time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
+                            rows = rows,
+                            cols = cols,
+                            altitude = c(0., 0.),
+                            fields = 'IceThickness',
+                            url = myURL
+                            ), silent = TRUE)
+   if (inherits(proj_extract, "try-error")) {
+      message("Unable to retrieve data from the ERDDAP\u2122 server")
+   } else {
+      test <- xy_to_latlon(proj_extract)
+   }
 }
 }
