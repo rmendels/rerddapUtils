@@ -1,9 +1,13 @@
 Package: rerddapUtils
-Title: What the Package Does (One Line, Title Case)
+Title: Miscellaneous Utilities for 'rerddap'.
 Version: 1.0.0
 Date: 2026-04-16
 Authors@R: person("Roy", "Mendelssohn", email = "roy.mendelssohn@noaa.gov", role = c("aut","cre"))
-Description: What the package does (one paragraph).
+Description:  'rerddapUtils' is an `R` package that is a set of four main 
+ functions designed to work with and extend the `rerddap` package
+ which are better not being included in the `rerddap` package. This includes restricting by season,
+ spltting large requests, and working with projected datasets. There are also two utility functions
+ to estimate the size of an 'rerddap::griddap()' request.
 License: CC0
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
