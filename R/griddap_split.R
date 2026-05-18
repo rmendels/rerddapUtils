@@ -45,9 +45,8 @@
 #'   message("The ERDDAP\u2122 server is not responding")
 #' } else
 #' {
-#' out <- rerddap::info('erdQMekm14day', url = myURL)
 #' request_split <- list(time = 2, altitude = 1, latitude = 1, longitude = 1)
-#' res <- try(griddap_split(out,
+#' res <- try(griddap_split(wind_info,
 #'                      time = c('2015-12-31','2016-01-01'),
 #'                      latitude = c(20, 21),
 #'                      longitude = c(220, 221),
