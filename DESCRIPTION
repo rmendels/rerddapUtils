@@ -1,7 +1,7 @@
 Package: rerddapUtils
 Title: Miscellaneous Utilities for 'rerddap'
 Version: 1.0.0
-Date: 2026-04-16
+Date: 2026-05-18
 Authors@R: person("Roy", "Mendelssohn", email = "roy.mendelssohn@noaa.gov", role = c("aut","cre"))
 Description: The 'rerddapUtils' package is an 'R' package that is a set of four main
  functions designed to work with and extend the 'rerddap' package. These functions includes one for restricting by season,
@@ -30,4 +30,5 @@ Suggests:
     knitr,
     rmarkdown
 VignetteBuilder: knitr
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.0.0.9000
+LazyData: true

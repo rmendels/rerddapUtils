@@ -46,15 +46,10 @@ from \code{rerddap::griddap()} but can be used with any geographic data that req
 coordinate transformation.
 }
 \examples{
-myURL <- 'https://coastwatch.noaa.gov/erddap/'
-response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
-if (inherits(response, "try-error")) {
- message("The ERDDAP\u2122 server is not responding")
-} else
-{
-myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+# myURL <- 'https://coastwatch.noaa.gov/erddap/'
+# iceInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 latitude <- c( 80., 85.)
 longitude <- c(-170., -165)
-coords <- latlon_to_xy(myInfo,  longitude, latitude)
-}
+coords <- latlon_to_xy(iceInfo,  longitude, latitude)
+
 }

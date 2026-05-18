@@ -26,30 +26,18 @@
 #' @examples
 #' rows <- c( -889533.8, -469356.9)
 #' cols <- c(622858.3, 270983.4)
-#' @examples
-#' rows <- c( -889533.8, -469356.9)
-#' cols <- c(622858.3, 270983.4)
-#' myURL <- 'https://coastwatch.noaa.gov/erddap/'
-#' response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
-#' if (inherits(response, "try-error")) {
-#'    message("The ERDDAP\u2122 server is not responding")
-#' } else
-#' {
-#' myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
-#'    proj_extract <- try(rerddap::griddap(myInfo,
-#'                             time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
-#'                             rows = rows,
-#'                             cols = cols,
-#'                             altitude = c(0., 0.),
-#'                             fields = 'IceThickness',
-#'                             url = myURL
-#'                             ), silent = TRUE)
-#'    if (inherits(proj_extract, "try-error")) {
-#'       message("Unable to retrieve data from the ERDDAP\u2122 server")
-#'    } else {
-#'       test <- xy_to_latlon(proj_extract)
-#'    }
-#' }
+#' # myURL <- 'https://coastwatch.noaa.gov/erddap/'
+#' # icceInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+#' # proj_extract <- rerddap::griddap(iceInfo,
+#' #                           time = c('2023-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
+#' #                            rows = rows,
+#' #                             cols = cols,
+#' #                             altitude = c(0., 0.),
+#' #                             fields = 'IceThickness',
+#' #                            url = myURL
+#' #                             )
+#' test <- xy_to_latlon(proj_extract)
+#'
 xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   # Validate resp is from rerddap and extract necessary attributes
   if (!inherits(resp, c('griddap_nc', 'rxtracto', 'rxtracto3D', 'rxtractoTrack'))) {
@@ -121,17 +109,12 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
 #' @export
 #'
 #' @examples
-#' myURL <- 'https://coastwatch.noaa.gov/erddap/'
-#' response <- try(httr::HEAD(myURL, httr::timeout(10)), silent = TRUE)
-#' if (inherits(response, "try-error")) {
-#'  message("The ERDDAP\u2122 server is not responding")
-#' } else
-#' {
-#' myInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+#' # myURL <- 'https://coastwatch.noaa.gov/erddap/'
+#' # iceInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
 #' latitude <- c( 80., 85.)
 #' longitude <- c(-170., -165)
-#' coords <- latlon_to_xy(myInfo,  longitude, latitude)
-#' }
+#' coords <- latlon_to_xy(iceInfo,  longitude, latitude)
+#'
 latlon_to_xy <- function (dataInfo, longitude, latitude,  xName = 'rows', yName = 'cols', crs = NULL) {
   proj_strings <- c('proj4text', 'projection', 'proj4string', 'grid_mapping_epsg_code',
                     'WKT',  'proj_crs_code',

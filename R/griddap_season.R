@@ -38,9 +38,9 @@
 #' wind_info <- rerddap::info('erdQMekm14day', url = myURL)
 #' season <- c('03-01', '03-04')
 #' season_extract <- try(griddap_season(wind_info,
-#'                                  time = c('2015-01-01','2017-01-01'),
-#'                                  latitude = c(20, 25),
-#'                                  longitude = c(220, 225),
+#'                                  time = c('2015-01-01','2016-01-01'),
+#'                                  latitude = c(20, 21),
+#'                                  longitude = c(220, 221),
 #'                                  fields = 'mod_current',
 #'                                  season = season
 #'                                  ), silent = TRUE)

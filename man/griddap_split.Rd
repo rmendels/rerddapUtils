@@ -87,8 +87,8 @@ out <- rerddap::info('erdQMekm14day', url = myURL)
 request_split <- list(time = 2, altitude = 1, latitude = 1, longitude = 1)
 res <- try(griddap_split(out,
                      time = c('2015-12-31','2016-01-01'),
-                     latitude = c(20, 25),
-                     longitude = c(220, 225),
+                     latitude = c(20, 21),
+                     longitude = c(220, 221),
                      fields = 'mod_current',
                      request_split = request_split
                      ), silent = TRUE)
