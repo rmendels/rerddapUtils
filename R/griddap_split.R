@@ -45,6 +45,7 @@
 #'   message("The ERDDAP\u2122 server is not responding")
 #' } else
 #' {
+#' data(wind_info)
 #' request_split <- list(time = 2, altitude = 1, latitude = 1, longitude = 1)
 #' res <- try(griddap_split(wind_info,
 #'                      time = c('2015-12-31','2016-01-01'),

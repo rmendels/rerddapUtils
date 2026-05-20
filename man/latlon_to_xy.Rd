@@ -48,6 +48,7 @@ coordinate transformation.
 \examples{
 # myURL <- 'https://coastwatch.noaa.gov/erddap/'
 # iceInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+data(iceInfo)
 latitude <- c( 80., 85.)
 longitude <- c(-170., -165)
 coords <- latlon_to_xy(iceInfo,  longitude, latitude)

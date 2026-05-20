@@ -38,7 +38,7 @@ Coordinate Reference System (CRS) transformation.
 rows <- c(300112.5, 250027.5)
 cols <- c(-400282.5, -350197.5)
 # myURL <- 'https://coastwatch.noaa.gov/erddap/'
-# iceInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url = myURL)
+# iceInfo <- rerddap::info('noaacwVIIRSn20icethickNP06Daily', url devtoo= myURL)
 # proj_extract <- rerddap::griddap(iceInfo,
 #                           time = c('2026-05-18T12:28:57Z', '2026-05-18T12:28:57Z'),
 #                            rows = rows,
@@ -46,7 +46,8 @@ cols <- c(-400282.5, -350197.5)
 #                             altitude = c(0., 0.),
 #                             fields = 'IceThickness',
 #                            url = myURL
-#                             )
+#
+data(proj_extract)
 test <- xy_to_latlon(proj_extract)
 
 }
