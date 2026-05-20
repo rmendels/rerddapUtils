@@ -1,6 +1,6 @@
-## New Submission
+## Fix for Fedora Error
 
-This is being resubmitted because of the problems with Fedora, and only Fedora.
+This is a quick re-submission to fix the error in the Fedora build machine, and only Fedora
 This should fix the problems. Note the error said:
 
  test <- xy_to_latlon(proj_extract)

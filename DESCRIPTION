@@ -1,6 +1,6 @@
 Package: rerddapUtils
 Title: Miscellaneous Utilities for 'rerddap'
-Version: 1.0.0
+Version: 1.0.1
 Date: 2026-05-20
 Authors@R: person("Roy", "Mendelssohn", email = "roy.mendelssohn@noaa.gov", role = c("aut","cre"))
 Description: The 'rerddapUtils' package is an 'R' package that is a set of four main
