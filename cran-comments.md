@@ -1,13 +1,6 @@
-## Fix for Fedora Error
+## Fix proxy error
 
-This is a quick re-submission to fix the error in the Fedora build machine, and only Fedora
-This should fix the problems. Note the error said:
-
- test <- xy_to_latlon(proj_extract)
-  Error: Proxy Error
-  
-proj_extract is a dataset stored in the package,  I have made the loading of the data
-explicit.
+This is a quick re-submission to fix the proxy error that keeps occurring.  Finally was able to reproduce it.
 
 ## Test environments
 * local OS X install, R 4.6.0 

@@ -49,7 +49,13 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   datasetid <- attributes(resp)$datasetid
   base_loc <- stringr::str_locate(url, 'erddap')[1, 2]
   base_url <- substr(url, 1, (base_loc + 1))
-  dataInfo <- rerddap::info(datasetid, url = base_url)
+  dataInfo <- try(rerddap::info(datasetid, url = base_url), silent = TRUE)
+  if (inherits(dataInfo, "try-error")) {
+    cli::cli_abort(
+      "The ERDDAP\u2122 server is not responding with the dataset information"
+    )
+  }
+
 
   proj_strings <- c('proj4text', 'projection', 'proj4string',
                     'grid_mapping_epsg_code', 'WKT',  'proj_crs_code',
