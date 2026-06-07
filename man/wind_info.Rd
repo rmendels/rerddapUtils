@@ -13,7 +13,8 @@ A list of class \code{info} with elements:
 }
 }
 \source{
-\url{https://coastwatch.noaa.gov/erddap/}
+Data originally accessed from the NOAA CoastWatch ERDDAP server:
+https://coastwatch.noaa.gov/erddap/
 }
 \usage{
 wind_info

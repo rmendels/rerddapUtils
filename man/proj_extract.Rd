@@ -12,7 +12,8 @@ A list of class \code{griddap_nc} with elements:
 }
 }
 \source{
-\url{https://coastwatch.noaa.gov/erddap/}
+Data originally accessed from the NOAA CoastWatch ERDDAP server:
+https://coastwatch.noaa.gov/erddap/
 }
 \usage{
 proj_extract

@@ -1,6 +1,6 @@
 ## Fix proxy error
 
-This is a quick re-submission to fix the proxy error that keeps occurring.  Finally was able to reproduce it.
+This is a quick re-submission to fix the proxy error in 'xy_to_latlon()'
 
 ## Test environments
 * local OS X install, R 4.6.0 

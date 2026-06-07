@@ -364,10 +364,11 @@ check_dims <- function(dimargs, .info) {
     #print("Present values are:")
     #print(dimargs)
     #stop("rerddap halted", call. = FALSE)
-    cli::cli_abort(c(
+    cli::cli_warn(c(
       "All coordinate bounds must be of length 2, even if the same value.",
       "i" = "Present values: {.val {dimargs}}"
     ))
+    return(NULL)
   }
   if (!all(names(dimargs) %in% dimvars(.info))) {
     stop(sprintf("Some input dimensions (%s) don't match those in dataset (%s)",
@@ -436,11 +437,12 @@ check_time_range <- function(dimargs, x) {
       #print("Dataset times are: ")
       #print(tt)
       #stop('rerddap halted', call. = FALSE)
-      cli::cli_abort(c(
+      cli::cli_warn(c(
         "Requested time bounds are outside the dataset range.",
         "x" = "You requested: {.val {dimargs$time[1]}} to {.val {dimargs$time[2]}}.",
         "i" = "Dataset range: {.val {tt[1]}} to {.val {tt[2]}}."
       ))
+      return(NULL)
     }
   }
 }

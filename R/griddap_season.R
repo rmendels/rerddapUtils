@@ -59,11 +59,12 @@ griddap_season <- function(datasetx, ..., fields = 'all', stride = 1, season = N
     #print('this must be a vector length 2')
     #print('each element of is of form month-day')
     #stop('stopped on error')
-    cli::cli_abort(c(
+    cli::cli_warn(c(
       "{.arg season} must be provided.",
       "i" = "It must be a vector of length 2.",
       "i" = "Each element should be of the form {.val month-day}."
     ))
+    return(NULL)
   }
   dimargs <- list(...)
   if (length(dimargs) == 0) stop("no dimension arguments passed, see ?griddap")

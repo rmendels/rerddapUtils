@@ -37,7 +37,8 @@
 #' #                            url = myURL
 #' #
 #' data(proj_extract)
-#' test <- xy_to_latlon(proj_extract)
+#' crs = "EPSG:3413"
+#' test <- xy_to_latlon(proj_extract, crs = crs)
 #'
 xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
   # Validate resp is from rerddap and extract necessary attributes
@@ -45,43 +46,37 @@ xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL) {
     stop("The response object is not recognized. Please provide a valid 'griddap', 'rxtracto', 'rxtracto3D', or 'rxtractoTrack' object.")
   }
 
-  url <- attributes(resp)$url
-  datasetid <- attributes(resp)$datasetid
-  base_loc <- stringr::str_locate(url, 'erddap')[1, 2]
-  base_url <- substr(url, 1, (base_loc + 1))
-  dataInfo <- try(rerddap::info(datasetid, url = base_url), silent = TRUE)
-  if (inherits(dataInfo, "try-error")) {
-    cli::cli_abort(
-      "The ERDDAP\u2122 server is not responding with the dataset information"
-    )
-  }
-
-
-  proj_strings <- c('proj4text', 'projection', 'proj4string',
-                    'grid_mapping_epsg_code', 'WKT',  'proj_crs_code',
-                    'grid_mapping_epsg_code', 'grid_mapping_proj4',
-                    'grid_mapping_proj4_params', 'grid_mapping_proj4text')
-  # if crs is in extract use that
-  crs_test <- intersect(proj_strings, dataInfo$alldata$NC_GLOBAL$attribute_name)
-  if (length(crs_test) == 0) {
-    # check if a crs is given
-    if (!is.null(crs)) {
-      proj_crs_code <- crs
-    } else {
-      #print('Could not find CRS information in the dataset and a CRS was not given')
-      # stop('Please provide CRS information in the function call.')
-      cli::cli_abort(c(
-  "Could not find CRS information in the dataset and none was given.",
-  "i" = "Provide CRS information in the function call."
-))
-    }
+  if (!is.null(crs)) {
+    cli::cli_warn("Make certain this is the correct CRS or the results may be nonsense")
+    proj_crs_code <- crs
   } else {
-    proj_crs_code_index <- match(crs_test, dataInfo$alldata$NC_GLOBAL$attribute_name)
-    proj_crs_code <- dataInfo$alldata$NC_GLOBAL$value[proj_crs_code_index]
+    url <- attributes(resp)$url
+    datasetid <- attributes(resp)$datasetid
+    base_loc <- stringr::str_locate(url, 'erddap')[1, 2]
+    base_url <- substr(url, 1, (base_loc + 1))
+    dataInfo <- try(rerddap::info(datasetid, url = base_url), silent = TRUE)
+    if (inherits(dataInfo, "try-error")) {
+      cli::cli_warn(
+        "The ERDDAP\u2122 server is not responding with the dataset information"
+      )
+      return(NULL)
+    }
+    proj_strings <- c('proj4text', 'projection', 'proj4string',
+                      'grid_mapping_epsg_code', 'WKT',  'proj_crs_code',
+                      'grid_mapping_epsg_code', 'grid_mapping_proj4',
+                      'grid_mapping_proj4_params', 'grid_mapping_proj4text')
+    crs_test <- intersect(proj_strings, dataInfo$alldata$NC_GLOBAL$attribute_name)
+    proj_crs_code_index <- match(
+      crs_test,
+      dataInfo$alldata$NC_GLOBAL$attribute_name
+    )
+    proj_crs_code <- dataInfo$alldata$NC_GLOBAL$value[
+      proj_crs_code_index
+    ]
   }
-  temp_df <- extract_grid_data(resp, xName, yName)
 
-  # Convert grid data to spatial data frame and transform to lat-lon
+  temp_df <- extract_grid_data(resp, xName, yName)
+   # Convert grid data to spatial data frame and transform to lat-lon
   coordinates <- prepare_and_transform(temp_df, proj_crs_code[1],  'EPSG:4326')
   dimnames(coordinates)[[2]] <- c('longitude', 'latitude')
   coordinates
@@ -150,11 +145,12 @@ latlon_to_xy <- function (dataInfo, longitude, latitude,  xName = 'rows', yName 
     #print("No CRS in file and no CRS given")
     #print("Look in dataset metadata for CRS information")
     #stop("Missing CRS information")
-    cli::cli_abort(c(
+    cli::cli_warn(c(
        "Missing CRS information.",
         "i" = "No CRS found in file and none was provided.",
         "i" = "Check the dataset metadata for CRS information."
     ))
+    return(NULL)
   } else if (crs_in_file && !crs_given) {
     # CRS in file, no CRS given
     coordinates <- prepare_and_transform(temp_df, 'EPSG:4326', proj_crs_code[1])

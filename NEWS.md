@@ -1,4 +1,4 @@
-# rerddapUtils 1.0.1
+# rerddapUtils 1.0.2
 
 Fixed proxy error in 'xy_to_latlon()'
 

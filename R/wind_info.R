@@ -8,7 +8,8 @@
 #'   \item{alldata}{metadata summary}
 #'   \item{base_url}{a character string givng the base URL of the extract}
 #' }
-#' @source \url{https://coastwatch.noaa.gov/erddap/}
+#' @source Data originally accessed from the NOAA CoastWatch ERDDAP server:
+#'   https://coastwatch.noaa.gov/erddap/
 #' @docType data
 #' @name wind_info
 "wind_info"

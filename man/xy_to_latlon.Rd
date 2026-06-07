@@ -48,6 +48,7 @@ cols <- c(-400282.5, -350197.5)
 #                            url = myURL
 #
 data(proj_extract)
-test <- xy_to_latlon(proj_extract)
+crs = "EPSG:3413"
+test <- xy_to_latlon(proj_extract, crs = crs)
 
 }

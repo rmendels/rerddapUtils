@@ -68,11 +68,12 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
     #print('this must be a vector the same length of the number of dimensions')
     #print('each elementof the vector is the number of splits in that dimension')
     #stop('stopped on error')
-    cli::cli_abort(c(
+    cli::cli_warn(c(
       "{.arg split} must be provided.",
       "i" = "It must be a vector the same length as the number of dimensions.",
       "i" = "Each element is the number of splits for that dimension."
     ))
+    return(NULL)
   }
   if ( (fmt == 'nc') | (fmt == 'duckdb')) {
     if (!is.null(aggregate_file )) {
@@ -81,10 +82,11 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
         #print('aggregate file already exists')
         #print('either rename the exising file or change aggregate_file')
         #stop('program is stopping')
-        cli::cli_abort(c(
+        cli::cli_warn(c(
           "Aggregate file already exists: {.path {aggregate_file}}",
           "i" = "Rename the existing file or choose a different {.arg aggregate_file}."
         ))
+        return(NULL)
       }
     }
   }
