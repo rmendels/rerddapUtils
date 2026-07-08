@@ -3,5 +3,5 @@
 ^\.positai$
 ^\.claude$
 ^cran-comments\.md$
-
+^CLAUDE\.md$
 ^CRAN-SUBMISSION$
