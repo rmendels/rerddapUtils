@@ -20,6 +20,7 @@
 #' -  nc: save output to a netcdf file
 #' -  memory:  save output in a dataframe in memory
 #' -  duckdb:  save data in a duckdb database
+#' -  parquet:  save data as a partitioned parquet dataset in a directory
 #' @param url A URL for an ERDDAP server. Default:
 #' https://upwell.pfeg.noaa.gov/erddap/ - See [rerddap::eurl()] for
 #' more information
@@ -90,6 +91,22 @@ griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_spl
       }
     }
   }
+  if ( fmt == 'parquet') {
+    if (!is.null(aggregate_file )) {
+      dir_check <- dir.exists(aggregate_file)
+      if (dir_check) {
+        #print('aggregate file already exists')
+        #print('either rename the exising file or change aggregate_file')
+        #stop('program is stopping')
+        cli::cli_warn(c(
+          "Directpry already exists: {.path {aggregate_file}}",
+          "i" = "Rename the existing Directory or choose a different {.arg aggregate_file}."
+        ))
+        return(NULL)
+      }
+    }
+  }
+
   dimargs <- list(...)
   if (length(dimargs) == 0) stop("no dimension arguments passed, see ?griddap")
   if (inherits(x, "info")) {
@@ -166,6 +183,13 @@ split_griddap_request <- function(info, url, stride,
     return <- create_nc_file(info, fields, nc_file, aggregate_file )
     return <- copy_attributes(info, fields, nc_file, aggregate_file)
   }
+  # if fmt is parquet,  create new partitioned parquet directory
+  if (fmt == 'parquet') {
+    if (is.null(aggregate_file)) {
+      aggregate_file <- file.path(tempdir(), "partitioned_parquet_files")
+      dir.create(aggregate_file, recursive = TRUE, showWarnings = FALSE)
+    }
+  }
   griddapOptsNames <- c('datasetx',  names(split_dim), 'fields', "stride", "callopts")
   split_names <- names(split_dim)
   final_result <- NULL
@@ -177,7 +201,7 @@ split_griddap_request <- function(info, url, stride,
     duckdb::dbDisconnect(con_db, shutdown = TRUE)
     duckdb::duckdb_shutdown(drv)
     final_result <- aggregate_file
-  } else if (fmt == 'nc') {
+  } else if ((fmt == 'nc') | (fmt == 'parquet')) {
     final_result <- aggregate_file
   }
   return(final_result)
@@ -275,6 +299,9 @@ partial_extract <- function(fields, fmt,  griddapOpts, stride, callopts,
   griddapOpts$fields <- fields
   griddapOpts$stride <- stride
   griddapOpts$callopts <- callopts
+  if (fmt == "parquet") {
+    griddapOpts$fmt = 'parquet'
+  }
   extract <- suppressMessages(do.call(rerddap::griddap, griddapOpts))
   if (fmt == 'memory') {
     final_result <- aggregate_memory(extract, final_result)
@@ -282,8 +309,10 @@ partial_extract <- function(fields, fmt,  griddapOpts, stride, callopts,
     final_result <- aggregate_duckdb(extract, con_db)
   } else if (fmt == 'nc') {
     final_result <- aggregate_netcdf(extract, aggregate_file)
+  } else if (fmt == 'parquet') {
+    final_result <- aggregate_parquet(extract, aggregate_file)
   }
-  return(final_result)
+return(final_result)
 }
 
 
@@ -468,5 +497,16 @@ aggregate_netcdf <- function(extract, aggregate_file) {
                      start = start, count = count)
   })
 
+  invisible(NULL)
+}
+
+aggregate_parquet <- function(extract, aggregate_file){
+  download_file <- attr(extract, "path")
+  no_files <- length(list.files(aggregate_file))
+  filename <- sprintf("extract%02d.parquet", no_files + 1)
+  file.copy(
+    from = download_file,
+    to = file.path(aggregate_file, basename(filename))
+  )
   invisible(NULL)
 }

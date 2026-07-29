@@ -42,11 +42,11 @@ The second function `griddap_split()`:
   
 - `griddap_split <- function(datasetx, ..., fields = 'all', stride = 1, request_split = NULL, fmt = "nc", url = eurl(), store = disk(), read = TRUE, callopts = list(), aggregate_file = NULL)`
               
-splits a very large request into pieces defined by 'request_split',  and then aggregates the parts either in memory,  in a duckdb database, or in a netcdf4 file.  This allows for requests larger than 2GB to be made in an appropriate manner.
+splits a very large request into pieces defined by 'request_split',  and then aggregates the parts either in memory,  in a duckdb database, in a netcdf4 file, or in a partitioned parquet file.  This allows for requests larger than 2GB to be made in an appropriate manner.
  
-Note that `griddap_season()` and `griddap_split()` are designed to mostly have the same interface as `rerddao::griddap()`,  except for one or two  additional function arguments.  Also some arguments are interpreted differently, such as in both functions the argument 'store = disk()' is ignored.  In `griddap_season()` the 'fmt' argument is ignored  while 'season' defines the days during the year to make the extract.
+Note that `griddap_season()` and `griddap_split()` are designed to mostly have the same interface as `rerddap::griddap()`,  except for one or two  additional function arguments.  Also some arguments are interpreted differently, such as in both functions the argument 'store = disk()' is ignored.  In `griddap_season()` the 'fmt' argument is ignored  while 'season' defines the days during the year to make the extract.
 
-In  `griddap_split()` the argument 'fmt' defines whether the aggregate download should be stored in memory as a dataframe,  in a duckdb database file,  or in a netcdf4 file.  For the duckdb and nectdf4 options, 'aggregate_file' lets you define where to write the file.  If 'aggregate_file'  is not defined a temporary file is created following proper [R]{style="color:red"} guidelines, and in both cases the path to the file is returned.
+In  `griddap_split()` the argument 'fmt' defines whether the aggregate download should be stored in memory as a dataframe,  in a duckdb database file, in a netcdf4 file, or in a partitioned parquet file.  For the duckdb, nectdf4 and parquet options, 'aggregate_file' lets you define where to write the file.  If 'aggregate_file'  is not defined a temporary file is created following proper [R]{style="color:red"} guidelines, and in both cases the path to the file is returned.
 
 The other two functions are designed to make it easier to work with projected datasets:
 
@@ -133,7 +133,7 @@ The function `griddap_split()` allows for  `rerddap::griddap()` requests that ar
 `griddap_split()` uses the same arguments as `rerddap::griddap()` except that:
 
 - The "store" and "read" arguments are ignored.
-- "fmt" is one of "memory", "nc", or "duckdb" - default "nc"
+- "fmt" is one of "memory", "nc", "duckdb" or "parquet" - default "nc"
 - an added argument "split"
 - an added argument "aggregate_file" - default is to create an [R]{style="color:red"} temporary file
 
@@ -151,7 +151,28 @@ request_split <- list(time = 5, latitude = 2, longitude = 2)
 
 will fail,  even though "altitude" is dimension one.  A value must be given for all of the coordinates in the dataset.
 
-"fmt" defines how the split extracts are combined to give one result.  If fmt = "memory"  then the results are combined into a usual `rerddap::griddap()` dataframe in memory,  and that structure is returned by the function.  If fmt = "nc" then the extracts are combined into a netcdf4 file,  and a path to the netcdf4 file is returned by the function. If fmt = "duckdb" then the extracts are combined into a duckdb database file,  and a path to the duckdb file is returned by the function.
+"fmt" defines how the split extracts are combined to give one result.  If fmt = "memory"  then the results are combined into a usual `rerddap::griddap()` dataframe in memory,  and that structure is returned by the function.  If fmt = "nc" then the extracts are combined into a netcdf4 file,  and a path to the netcdf4 file is returned by the function. If fmt = "duckdb" then the extracts are combined into a duckdb database file,  and a path to the duckdb file is returned by the function. If fmt = "parquet" then a directory is created and the parquet file for each split request is placed in the directory,  which is viewed as a partitioned parquet file.
+
+Many [R]{style="color:red"} parquet readers, unlike in Python,  can not read a partitioned parquet file. To do so in [R]{style="color:red"}:
+
+```{r, eval = FALSE, echo = TRUE}
+df <- arrow::open_dataset("partitioned_parquet_files")
+```
+
+which does lazy access to the contents of the folder.  To actual get the data an action must be initiated, such as the following will read the entire download into memory:
+
+```{r, eval = FALSE, echo = TRUE}
+df <- arrow::open_dataset("partitioned_parquet_files") |>
+  dplyr::collect()
+```
+
+or make a subset and then read into memory:
+
+```{r, eval = FALSE, echo = TRUE}
+df <- arrow::open_dataset("partitioned_parquet_files") |>
+    dplyr::arrange(part_id, row_id) |>
+    dplyr::collect()
+```
 
 As in the previous example, given a proposed `rerddap::griddap()` extract:
 

@@ -5,3 +5,8 @@
 ^cran-comments\.md$
 ^CLAUDE\.md$
 ^CRAN-SUBMISSION$
+^\.git$
+^\.gitignore$
+^\.github$
+^\.github/.*$
+
