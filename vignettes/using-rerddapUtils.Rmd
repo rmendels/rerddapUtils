@@ -28,7 +28,7 @@ library(rerddap)
 library(rerddapUtils)
 ```
  
- The [R]{style="color:red"} package `rerddapUtils` is a set of four main functions designed to work extend the `rerddap` package to provide capabilities requested by users, and that meet specialized needs which are better dealt with in a separate package, and also provides two helper functions that estimate the size of a proposed `rerddap::griddap()` request.
+ The [R]{style="color:red"} package `rerddapUtils` is a set of four main functions designed to extend the `rerddap` package to provide capabilities requested by users, and that meet specialized needs which are better dealt with in a separate package.  The package also provides two helper functions that estimate the size of a proposed `rerddap::griddap()` request.
  
  The first function `griddap_season()`:
  
@@ -46,7 +46,7 @@ splits a very large request into pieces defined by 'request_split',  and then ag
  
 Note that `griddap_season()` and `griddap_split()` are designed to mostly have the same interface as `rerddap::griddap()`,  except for one or two  additional function arguments.  Also some arguments are interpreted differently, such as in both functions the argument 'store = disk()' is ignored.  In `griddap_season()` the 'fmt' argument is ignored  while 'season' defines the days during the year to make the extract.
 
-In  `griddap_split()` the argument 'fmt' defines whether the aggregate download should be stored in memory as a dataframe,  in a duckdb database file, in a netcdf4 file, or in a partitioned parquet file.  For the duckdb, nectdf4 and parquet options, 'aggregate_file' lets you define where to write the file.  If 'aggregate_file'  is not defined a temporary file is created following proper [R]{style="color:red"} guidelines, and in both cases the path to the file is returned.
+In  `griddap_split()` the argument 'fmt' defines whether the aggregate download should be stored in memory as a dataframe,  in a duckdb database file, in a netcdf4 file, or in a partitioned parquet file.  For the duckdb, netcdf4 and parquet options, 'aggregate_file' lets you define where to write the file.  If 'aggregate_file'  is not defined a temporary file is created following proper [R]{style="color:red"} guidelines, and in both cases the path to the file is returned.
 
 The other two functions are designed to make it easier to work with projected datasets:
 
@@ -56,7 +56,7 @@ which for a given dataset will convert a latitude and longitude request into the
 
 - `xy_to_latlon <- function (resp, yName = 'cols', xName = 'rows', crs = NULL)`
 
-does the reverse,  given an `rerddao::griddap()` extract with projected coordinates, the coordinates are translated into latitude and longitude values.
+does the reverse,  given an `rerddap::griddap()` extract with projected coordinates, the coordinates are translated into latitude and longitude values.
 
 The two helper functions work with  `rerddap::griddap()` and `griddap_split()`:
 
@@ -69,11 +69,11 @@ and
 `estimate_griddap_size()` provides a rough estimate of the size  of a download from an `rerddap::griddap()` request,  and `estimate_griddap_split_size()` takes the output from '`estimate_griddap_size()` and estimates the size of the download for each request for a given split.
 
 
-This vignette assumes familiarity with the various 'rerddap' functions and how to use them.  More information about the various 'rerddap' functions can be found in the documentation for that package.
+This vignette assumes familiarity with the various `rerddap` functions and how to use them.  More information about the various `rerddap` functions can be found in the documentation for that package.
 
 ## Extract during a season - `griddap_season()`
 
-The function `griddap_season()` works exactly like the function `rerddap::griddap` except that there is one extra argument,  "season",  which restricts the extract to the part of the year defined by "season".  `griddap_season()` also ignores several of the `rerddap::griddap` options,  such as it ignores the "fmt" option,  and only saves to a standard `rerddap::griddap` output structure.
+The function `griddap_season()` works exactly like the function `rerddap::griddap()` except that there is one extra argument,  "season",  which restricts the extract to the part of the year defined by "season".  `griddap_season()` also ignores several of the `rerddap::griddap()` options,  for example the "fmt" option is ignored,  and only saves to a standard `rerddap::griddap()` output structure.
 
 The argument "season" is a character string such that for a given "year",  `paste0(year, '-', season)` produces a valid ISO datetime string.  To test that  "season" is properly formed, use `lubridate::as_datetime()`:
 
@@ -128,7 +128,7 @@ Only results for months 3, 4, and 5 are included,  as per the values of "season"
 
 ## Split an extract into parts - `griddap_split()`
 
-The function `griddap_split()` allows for  `rerddap::griddap()` requests that are larger than the 2GB limit by splitting the request into parts and then combining the results either in memory, in a dataframe,  in a netcdf4 file,  or into a duckdb database file.  If the "in memory" option is chosen, there is no check that there is adequate memory,  so it is possible to crash both R and your computer. The nectdf4 and duckdb options depend more on having adequate disk space,  not memory. To check if the proposed split is small enough,  see `estimate_griddap_split_size()` below.
+The function `griddap_split()` allows for  `rerddap::griddap()` requests that are larger than the 2GB limit by splitting the request into parts and then combining the results either in memory, in a dataframe,  in a netcdf4 file,  or into a duckdb database file.  If the "in memory" option is chosen, there is no check that there is adequate memory,  so it is possible to crash both R and your computer. The netcdf4, duckdb and parquet options depend more on having adequate disk space,  not memory. To check if the proposed split is small enough,  see `estimate_griddap_split_size()` below.
 
 `griddap_split()` uses the same arguments as `rerddap::griddap()` except that:
 
@@ -151,7 +151,7 @@ request_split <- list(time = 5, latitude = 2, longitude = 2)
 
 will fail,  even though "altitude" is dimension one.  A value must be given for all of the coordinates in the dataset.
 
-"fmt" defines how the split extracts are combined to give one result.  If fmt = "memory"  then the results are combined into a usual `rerddap::griddap()` dataframe in memory,  and that structure is returned by the function.  If fmt = "nc" then the extracts are combined into a netcdf4 file,  and a path to the netcdf4 file is returned by the function. If fmt = "duckdb" then the extracts are combined into a duckdb database file,  and a path to the duckdb file is returned by the function. If fmt = "parquet" then a directory is created and the parquet file for each split request is placed in the directory,  which is viewed as a partitioned parquet file.
+"fmt" defines how the split extracts are combined to give one result.  If fmt = "memory"  then the results are combined into an usual `rerddap::griddap()` dataframe in memory,  and that structure is returned by the function.  If fmt = "nc" then the extracts are combined into a netcdf4 file,  and a path to the netcdf4 file is returned by the function. If fmt = "duckdb" then the extracts are combined into a duckdb database file,  and a path to the duckdb file is returned by the function. If fmt = "parquet" then a directory is created and the parquet file for each split request is placed in the directory,  which is viewed as a partitioned parquet file.
 
 Many [R]{style="color:red"} parquet readers, unlike in Python,  can not read a partitioned parquet file. To do so in [R]{style="color:red"}:
 
@@ -159,7 +159,7 @@ Many [R]{style="color:red"} parquet readers, unlike in Python,  can not read a p
 df <- arrow::open_dataset("partitioned_parquet_files")
 ```
 
-which does lazy access to the contents of the folder.  To actual get the data an action must be initiated, such as the following will read the entire download into memory:
+which does lazy access to the contents of the folder.  To actually obtain the data an action must be initiated, such as the following  read the entire download into memory:
 
 ```{r, eval = FALSE, echo = TRUE}
 df <- arrow::open_dataset("partitioned_parquet_files") |>
@@ -306,7 +306,7 @@ dbDisconnect(con_db, shutdown=TRUE)
 ```
 
 
-The default "duckdb" format is used because it allows for incremental additions to the dataset on disk,  so datasets can be larger than memory. A popular format for storing data is "parquet", or if it is desired to encode geometry information into the data,  then the "geoparquet" format.  To copy the duckdb file to parquet:
+The default "duckdb" format is used because it allows for incremental additions to the dataset on disk,  so datasets can be larger than memory.  To copy the duckdb file to parquet file if desired:
 
 ```{r wind_split_parquet, eval = FALSE}
 con_db <- dbConnect(duckdb::duckdb(), "wind_extract.duckdb")
@@ -351,7 +351,7 @@ coords <- latlon_to_xy(myInfo,  longitude, latitude)
 coords
 ```
 
-Similary,  given an extract on a projected coordinate system, the values on terms of latitude and longitude can be found by:
+Similarly,  given an extract on a projected coordinate system, the values on terms of latitude and longitude can be found by:
 
 ```{r xy_to_latlon, eval = FALSE} 
 rows <- c( -889533.8, -469356.9)
