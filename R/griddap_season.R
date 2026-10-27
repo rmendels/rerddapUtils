@@ -30,7 +30,7 @@
 #'
 #' @examples
 #' myURL <- "https://coastwatch.pfeg.noaa.gov/erddap/"
-#' response <- try(httr::HEAD(myURL, httr::timeout(20)), silent = TRUE)
+#' response <- try(httr::HEAD(myURL, httr::timeout(5)), silent = TRUE)
 #' if (inherits(response, "try-error")) {
 #'    message("The ERDDAP\u2122 server is not responding")
 #' } else

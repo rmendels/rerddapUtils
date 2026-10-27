@@ -41,6 +41,7 @@ to segment the request into manageable chunks. This is particularly useful for l
 \item nc: save output to a netcdf file
 \item memory:  save output in a dataframe in memory
 \item duckdb:  save data in a duckdb database
+\item parquet:  save data as a partitioned parquet dataset in a directory
 }}
 
 \item{url}{A URL for an ERDDAP server. Default:
